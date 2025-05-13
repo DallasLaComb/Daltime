@@ -6,6 +6,14 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+# AWS SAM build artifacts
+.aws-sam/
+
+# Local event files (optional if you use them for testing)
+events/
+
+# AWS credentials files (never commit these)
+*.awsconfig
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
