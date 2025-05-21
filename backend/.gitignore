@@ -16,7 +16,6 @@
 
 # .nfs files are created when an open file is removed but is still being accessed
 .nfs*
-
 ### Node ###
 # Logs
 logs
@@ -150,7 +149,8 @@ temp/
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -172,12 +172,14 @@ Temporary Items
 .apdisk
 
 ### SAM ###
+### SAM ###
 # Ignore build directories for the AWS Serverless Application Model (SAM)
 # Info: https://aws.amazon.com/serverless/sam/
 # Docs: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-reference.html
 
-**/.aws-sam
+template.yaml
 
+**/.aws-sam
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
