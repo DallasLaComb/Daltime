@@ -2,7 +2,7 @@ name: Deploy Full Stack
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   deploy-frontend:
