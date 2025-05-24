@@ -8,7 +8,7 @@ globalThis.ngJest = {
 module.exports = {
   preset: 'jest-preset-angular', // Use Angular preset (built on ts-jest):contentReference[oaicite:3]{index=3}
   testEnvironment: 'jsdom', // Simulate browser environment for DOM (JSDOM)
-  setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'], // Setup file to initialize Angular testing env:contentReference[oaicite:4]{index=4}
+  setupFilesAfterEnv: ['<rootDir>/src/setup-jest.ts'],
   moduleDirectories: ['node_modules', 'src'], // Allow imports from 'src' root
   transformIgnorePatterns: [
     '/node_modules/(?!.*\\.mjs$)', // Transform ESM modules (Angular packages) in node_modules:contentReference[oaicite:5]{index=5}:contentReference[oaicite:6]{index=6}
