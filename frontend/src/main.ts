@@ -7,8 +7,8 @@ import { RegisterComponent } from './app/auth/register/register.component';
 const routes: Routes = [
   { path: 'auth/login', component: LoginComponent },
   { path: 'auth/register', component: RegisterComponent },
-  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
-  { path: '**', redirectTo: 'auth/login' },
+  { path: '', redirectTo: 'auth/register', pathMatch: 'full' },
+  { path: '**', redirectTo: 'auth/register' },
 ];
 
 bootstrapApplication(AppComponent, {
