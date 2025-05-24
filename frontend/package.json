@@ -6,7 +6,7 @@
     "dev": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "jest",
+    "test": "node --experimental-vm-modules --no-warnings ./node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "serve:ssr:frontend": "node dist/frontend/server/server.mjs"
@@ -35,6 +35,7 @@
     "jest-preset-angular": "^14.5.5",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "~5.7.2"
   }
 }
