@@ -3,6 +3,6 @@
     "dotenv-cli": "^8.0.0"
   },
   "scripts": {
-    "dev": "dotenv -- sam local start-api --parameter-overrides SupabaseUrl=$SUPABASE_URL SupabaseAnonKey=$SUPABASE_ANON_KEY SupabaseServiceRole=$SUPABASE_SERVICE_ROLE"
+    "dev": "dotenv -- sam local start-api --parameter-overrides \"ParameterKey=SupabaseUrl,ParameterValue=$SUPABASE_URL\" \"ParameterKey=SupabaseAnonKey,ParameterValue=$SUPABASE_ANON_KEY\" \"ParameterKey=SupabaseServiceRole,ParameterValue=$SUPABASE_SERVICE_ROLE\""
   }
 }
