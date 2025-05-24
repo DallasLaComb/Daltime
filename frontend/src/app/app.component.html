@@ -1,1 +1,21 @@
-<div class="bg-red-500 text-white p-4 rounded">Tailwind is working!</div>
+<nav class="bg-gray-800 p-4 shadow-md flex items-center justify-between">
+  <div class="text-white text-xl font-semibold">Shift Scheduler</div>
+  <div class="space-x-4">
+    <a
+      routerLink="/auth/login"
+      routerLinkActive="text-blue-400 border-b-2 border-blue-400"
+      class="text-white hover:text-blue-300 px-2 pb-1"
+      >Login</a
+    >
+    <a
+      routerLink="/auth/register"
+      routerLinkActive="text-blue-400 border-b-2 border-blue-400"
+      class="text-white hover:text-blue-300 px-2 pb-1"
+      >Register</a
+    >
+  </div>
+</nav>
+
+<main class="p-4">
+  <router-outlet></router-outlet>
+</main>

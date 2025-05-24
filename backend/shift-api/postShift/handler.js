@@ -1,8 +1,7 @@
-require("dotenv").config();
 const axios = require("axios");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_API_KEY = process.env.SUPABASE_API_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 exports.handler = async (event) => {
   try {
@@ -10,8 +9,8 @@ exports.handler = async (event) => {
 
     const response = await axios.post(`${SUPABASE_URL}/rest/v1/shifts`, body, {
       headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: `Bearer ${SUPABASE_API_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
