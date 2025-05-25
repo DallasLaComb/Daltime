@@ -1,6 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { AppComponent } from './app/app.component';
 import { provideRouter, Routes } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http'; // ✅ ADD THIS
+import { AppComponent } from './app/app.component';
 import { LoginComponent } from './app/auth/login/login.component';
 import { RegisterComponent } from './app/auth/register/register.component';
 
@@ -12,5 +13,5 @@ const routes: Routes = [
 ];
 
 bootstrapApplication(AppComponent, {
-  providers: [provideRouter(routes)],
+  providers: [provideRouter(routes), provideHttpClient()],
 });

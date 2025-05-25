@@ -33,7 +33,11 @@ Resources:
           Type: Api
           Properties:
             Path: /auth/register
-            Method: post
+            Method: ANY # Changed to ANY for better local CORS testing
+            Cors:
+              AllowMethods: "'POST,OPTIONS'"
+              AllowOrigins: "'*'"
+              AllowHeaders: "'Content-Type,Authorization'"
 
   LoginUserFunction:
     Type: AWS::Serverless::Function
@@ -49,7 +53,11 @@ Resources:
           Type: Api
           Properties:
             Path: /auth/login
-            Method: post
+            Method: ANY
+            Cors:
+              AllowMethods: "'POST,OPTIONS'"
+              AllowOrigins: "'*'"
+              AllowHeaders: "'Content-Type,Authorization'"
 
   PostShiftFunction:
     Type: AWS::Serverless::Function
@@ -65,4 +73,8 @@ Resources:
           Type: Api
           Properties:
             Path: /shift/post
-            Method: post
+            Method: ANY
+            Cors:
+              AllowMethods: "'POST,OPTIONS'"
+              AllowOrigins: "'*'"
+              AllowHeaders: "'Content-Type,Authorization'"
