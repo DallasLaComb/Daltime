@@ -1,52 +1,111 @@
-<form (ngSubmit)="register()" #registerForm="ngForm">
-  <div class="mb-4">
-    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-      Email Address
-    </label>
+<form
+  (ngSubmit)="register()"
+  #registerForm="ngForm"
+  class="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-md space-y-6"
+>
+  <h2 class="text-2xl font-bold text-gray-800">Create an Account</h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700">First Name</label>
+      <input
+        [(ngModel)]="firstName"
+        name="firstName"
+        type="text"
+        required
+        class="mt-1 w-full px-3 py-2 border rounded"
+      />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Last Name</label>
+      <input
+        [(ngModel)]="lastName"
+        name="lastName"
+        type="text"
+        required
+        class="mt-1 w-full px-3 py-2 border rounded"
+      />
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700">Email Address</label>
     <input
       [(ngModel)]="email"
       name="email"
       type="email"
       required
-      placeholder="janedoe@example.com"
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+      class="mt-1 w-full px-3 py-2 border rounded"
     />
   </div>
 
-  <div class="mb-4">
-    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-      Password
-    </label>
-    <input
-      [(ngModel)]="password"
-      name="password"
-      type="password"
+  <div>
+    <label class="block text-sm font-medium text-gray-700">Company</label>
+    <select
+      [(ngModel)]="company"
+      name="company"
       required
-      placeholder="***************"
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
-  </div>
-
-  <div class="mb-6">
-    <label
-      for="confirm-password"
-      class="block text-sm font-medium text-gray-700 mb-1"
+      class="mt-1 w-full px-3 py-2 border rounded"
     >
-      Confirm Password
-    </label>
-    <input
-      [(ngModel)]="confirmPassword"
-      name="confirmPassword"
-      type="password"
+      <option value="" disabled selected>Select Company</option>
+      <option *ngFor="let c of companies" [value]="c">{{ c }}</option>
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700">Role</label>
+    <select
+      [(ngModel)]="role"
+      name="role"
       required
-      placeholder="***************"
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+      class="mt-1 w-full px-3 py-2 border rounded"
+    >
+      <option value="" disabled selected>Select Role</option>
+      <option value="employee">Employee</option>
+      <option value="manager">Manager</option>
+      <option value="admin">Admin</option>
+    </select>
+  </div>
+
+  <div *ngIf="role === 'employee'">
+    <label class="block text-sm font-medium text-gray-700">Manager(s)</label>
+    <input
+      [(ngModel)]="managers"
+      name="managers"
+      type="text"
+      placeholder="Comma-separated"
+      class="mt-1 w-full px-3 py-2 border rounded"
     />
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Password</label>
+      <input
+        [(ngModel)]="password"
+        name="password"
+        type="password"
+        required
+        class="mt-1 w-full px-3 py-2 border rounded"
+      />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700"
+        >Confirm Password</label
+      >
+      <input
+        [(ngModel)]="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        required
+        class="mt-1 w-full px-3 py-2 border rounded"
+      />
+    </div>
   </div>
 
   <button
     type="submit"
-    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded shadow-md transition duration-200 w-full"
+    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
   >
     Register
   </button>
