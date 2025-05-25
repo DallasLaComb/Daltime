@@ -1,0 +1,32 @@
+<div class="max-w-2xl mx-auto mt-20 p-6 bg-white rounded shadow">
+  <h1 class="text-xl font-bold mb-4">Welcome to the Home Page</h1>
+
+  <div *ngIf="token; else noToken">
+    <p><strong>Your Auth Token:</strong></p>
+    <code class="block bg-gray-100 p-2 mt-2 break-all">{{ token }}</code>
+
+    <div
+      *ngIf="decoded"
+      class="mt-6 text-sm bg-gray-50 p-4 rounded border border-gray-200"
+    >
+      <h2 class="font-semibold mb-2">Decoded Token Data</h2>
+      <p><strong>User ID:</strong> {{ decoded.sub }}</p>
+      <p *ngIf="decoded.email"><strong>Email:</strong> {{ decoded.email }}</p>
+      <p><strong>Role:</strong> {{ decoded.role || 'n/a' }}</p>
+      <p>
+        <strong>Expires:</strong> {{ decoded.exp * 1000 | date : 'medium' }}
+      </p>
+    </div>
+  </div>
+
+  <ng-template #noToken>
+    <p class="text-red-500">No token found. You are not logged in.</p>
+  </ng-template>
+
+  <button
+    (click)="logout()"
+    class="mt-6 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700"
+  >
+    Logout
+  </button>
+</div>
