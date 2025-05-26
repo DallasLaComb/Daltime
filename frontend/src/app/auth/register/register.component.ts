@@ -1,46 +1,37 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { InputComponent } from '@CommonShiftScheduler/form/input/input.component';
+import { SelectComponent } from '@CommonShiftScheduler/form/select/select.component';
 import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 
 @Component({
-  selector: 'app-register',
+  selector: 'shift-scheduler-register',
   standalone: true,
-  imports: [FormsModule, CommonModule, ButtonComponent],
+  imports: [FormsModule, InputComponent, SelectComponent, ButtonComponent],
   templateUrl: './register.component.html',
 })
 export class RegisterComponent {
   firstName = '';
   lastName = '';
   email = '';
+  company = '';
+  role = '';
+  managers = '';
   password = '';
   confirmPassword = '';
-  company = '';
-  role: 'employee' | 'manager' | 'admin' | '' = '';
-  managers = '';
 
   companies = ['Meriden YMCA', 'Southington YMCA', 'Wallingford YMCA'];
 
   register() {
-    if (this.password !== this.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-
-    const userData = {
+    console.log('Form submitted:', {
       firstName: this.firstName,
       lastName: this.lastName,
       email: this.email,
-      password: this.password,
       company: this.company,
       role: this.role,
-      managers:
-        this.role === 'employee'
-          ? this.managers.split(',').map((m) => m.trim())
-          : [],
-    };
-
-    console.log('Registering user:', userData);
-    // TODO: Replace with actual API logic
+      managers: this.managers,
+      password: this.password,
+      confirmPassword: this.confirmPassword,
+    });
   }
 }

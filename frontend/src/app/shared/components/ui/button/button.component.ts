@@ -1,11 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 
 @Component({
   selector: 'shift-scheduler-button',
-  imports: [],
+  standalone: true,
   templateUrl: './button.component.html',
-  styleUrl: './button.component.scss'
 })
 export class ButtonComponent {
-
+  @Input() type: 'button' | 'submit' | 'reset' = 'button';
+  @Input() disabled = false;
 }

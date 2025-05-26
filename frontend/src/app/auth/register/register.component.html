@@ -6,104 +6,72 @@
   <h2 class="text-2xl font-bold text-gray-800">Create an Account</h2>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700">First Name</label>
-      <input
-        [(ngModel)]="firstName"
-        name="firstName"
-        type="text"
-        required
-        class="mt-1 w-full px-3 py-2 border rounded"
-      />
-    </div>
-    <div>
-      <label class="block text-sm font-medium text-gray-700">Last Name</label>
-      <input
-        [(ngModel)]="lastName"
-        name="lastName"
-        type="text"
-        required
-        class="mt-1 w-full px-3 py-2 border rounded"
-      />
-    </div>
-  </div>
-
-  <div>
-    <label class="block text-sm font-medium text-gray-700">Email Address</label>
-    <input
-      [(ngModel)]="email"
-      name="email"
-      type="email"
-      required
-      class="mt-1 w-full px-3 py-2 border rounded"
+    <shift-scheduler-input
+      name="firstName"
+      label="First Name"
+      [(ngModel)]="firstName"
+      [required]="true"
+    />
+    <shift-scheduler-input
+      name="lastName"
+      label="Last Name"
+      [(ngModel)]="lastName"
+      [required]="true"
     />
   </div>
 
-  <div>
-    <label class="block text-sm font-medium text-gray-700">Company</label>
-    <select
-      [(ngModel)]="company"
-      name="company"
-      required
-      class="mt-1 w-full px-3 py-2 border rounded"
-    >
-      <option value="" disabled selected>Select Company</option>
-      <option *ngFor="let c of companies" [value]="c">{{ c }}</option>
-    </select>
-  </div>
+  <shift-scheduler-input
+    name="email"
+    label="Email Address"
+    type="email"
+    [(ngModel)]="email"
+    [required]="true"
+  />
 
-  <div>
-    <label class="block text-sm font-medium text-gray-700">Role</label>
-    <select
-      [(ngModel)]="role"
-      name="role"
-      required
-      class="mt-1 w-full px-3 py-2 border rounded"
-    >
-      <option value="" disabled selected>Select Role</option>
-      <option value="employee">Employee</option>
-      <option value="manager">Manager</option>
-      <option value="admin">Admin</option>
-    </select>
-  </div>
+  <shift-scheduler-select
+    name="company"
+    label="Company"
+    [options]="companies"
+    [(ngModel)]="company"
+    placeholder="Select Company"
+    [required]="true"
+  />
 
-  <div *ngIf="role === 'employee'">
-    <label class="block text-sm font-medium text-gray-700">Manager(s)</label>
-    <input
-      [(ngModel)]="managers"
-      name="managers"
-      type="text"
-      placeholder="Comma-separated"
-      class="mt-1 w-full px-3 py-2 border rounded"
-    />
-  </div>
+  <shift-scheduler-select
+    name="role"
+    label="Role"
+    [options]="['employee', 'manager', 'admin']"
+    [(ngModel)]="role"
+    placeholder="Select Role"
+    [required]="true"
+  />
+
+  <shift-scheduler-input
+    *ngIf="role === 'employee'"
+    name="managers"
+    label="Manager(s)"
+    placeholder="Comma-separated"
+    [(ngModel)]="managers"
+  />
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700">Password</label>
-      <input
-        [(ngModel)]="password"
-        name="password"
-        type="password"
-        required
-        class="mt-1 w-full px-3 py-2 border rounded"
-      />
-    </div>
-    <div>
-      <label class="block text-sm font-medium text-gray-700"
-        >Confirm Password</label
-      >
-      <input
-        [(ngModel)]="confirmPassword"
-        name="confirmPassword"
-        type="password"
-        required
-        class="mt-1 w-full px-3 py-2 border rounded"
-      />
-    </div>
+    <shift-scheduler-input
+      name="password"
+      label="Password"
+      type="password"
+      [(ngModel)]="password"
+      [required]="true"
+    />
+    <shift-scheduler-input
+      name="confirmPassword"
+      label="Confirm Password"
+      type="password"
+      [(ngModel)]="confirmPassword"
+      [required]="true"
+    />
   </div>
 
-  <shift-scheduler-button type="submit" variant="primary"
-    >Register</shift-scheduler-button
-  >
+  <shift-scheduler-button type="submit" variant="primary">
+    Register
+  </shift-scheduler-button>
 </form>
