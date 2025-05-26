@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ButtonComponent } from '@CommonShiftScheduler/button/button.component';
+import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 
 @Component({
   selector: 'app-register',

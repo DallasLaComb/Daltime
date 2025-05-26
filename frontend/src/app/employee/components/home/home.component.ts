@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { jwtDecode } from 'jwt-decode';
 import { AuthService } from '../../../auth/auth.service';
+import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 
 interface SupabaseJwtPayload {
   sub: string;
@@ -15,7 +16,7 @@ interface SupabaseJwtPayload {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonComponent],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
 })
