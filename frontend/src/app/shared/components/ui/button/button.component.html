@@ -1,7 +1,19 @@
 <button
   [type]="type"
   [disabled]="disabled"
-  class="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+  [ngClass]="[
+    'px-4 py-2 text-sm font-medium rounded transition focus:outline-none',
+    disabled ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : '',
+    variant === 'primary' && !disabled
+      ? 'bg-primary text-white hover:bg-primary-dark'
+      : '',
+    variant === 'secondary' && !disabled
+      ? 'bg-white text-secondary border border-secondary hover:bg-gray-100'
+      : '',
+    variant === 'tertiary' && !disabled
+      ? 'bg-transparent text-primary hover:underline'
+      : ''
+  ]"
 >
   <ng-content></ng-content>
 </button>

@@ -4,6 +4,7 @@ import { InputComponent } from '@CommonShiftScheduler/form/input/input.component
 import { SelectComponent } from '@CommonShiftScheduler/form/select/select.component';
 import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 import { NgIf } from '@angular/common';
+import { RouterModule } from '@angular/router';
 @Component({
   selector: 'shift-scheduler-register',
   standalone: true,
@@ -13,6 +14,7 @@ import { NgIf } from '@angular/common';
     SelectComponent,
     ButtonComponent,
     NgIf,
+    RouterModule,
   ],
   templateUrl: './register.component.html',
 })

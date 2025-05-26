@@ -71,7 +71,20 @@
     />
   </div>
 
-  <shift-scheduler-button type="submit" variant="primary">
-    Register
-  </shift-scheduler-button>
+  <!-- Register button with margin -->
+  <div class="mt-4">
+    <shift-scheduler-button type="submit" variant="primary">
+      Register
+    </shift-scheduler-button>
+  </div>
+
+  <!-- Login link -->
+  <div class="text-sm text-center text-gray-600 mt-4">
+    Already have an account?
+    <a [routerLink]="'/auth/login'" class="ml-1 inline-block">
+      <shift-scheduler-button variant="tertiary" type="button">
+        Login
+      </shift-scheduler-button>
+    </a>
+  </div>
 </form>
