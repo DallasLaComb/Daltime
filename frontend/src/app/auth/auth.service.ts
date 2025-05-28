@@ -30,19 +30,26 @@ export class AuthService {
     );
   }
 
-  // 🔹 Save token to localStorage
-  saveToken(token: string): void {
-    localStorage.setItem('authToken', token);
+  // 🔹 Save full auth data to localStorage
+  saveAuthData(auth: any): void {
+    localStorage.setItem('authData', JSON.stringify(auth));
   }
 
-  // 🔹 Get stored token
+  // 🔹 Get full auth data from localStorage
+  getAuthData(): LoginResponse | null {
+    const raw = localStorage.getItem('authData');
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  // 🔹 Get token from stored auth data
   getToken(): string | null {
-    return localStorage.getItem('authToken');
+    const data = this.getAuthData();
+    return data?.token || null;
   }
 
-  // 🔹 Logout (clear token)
+  // 🔹 Logout (clear all auth data)
   logout(): void {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('authData');
   }
 
   // 🔹 Check if user is authenticated

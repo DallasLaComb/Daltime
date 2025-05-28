@@ -1,90 +1,92 @@
-<form
-  (ngSubmit)="register()"
-  #registerForm="ngForm"
-  class="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-md space-y-6"
->
-  <h2 class="text-2xl font-bold text-gray-800">Create an Account</h2>
+<div class="min-h-screen flex items-center">
+  <form
+    (ngSubmit)="register()"
+    #registerForm="ngForm"
+    class="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-md space-y-6"
+  >
+    <h2 class="text-2xl font-bold text-gray-800">Create an Account</h2>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <shift-scheduler-input
+        name="firstName"
+        label="First Name"
+        [(ngModel)]="firstName"
+        [required]="true"
+      />
+      <shift-scheduler-input
+        name="lastName"
+        label="Last Name"
+        [(ngModel)]="lastName"
+        [required]="true"
+      />
+    </div>
+
     <shift-scheduler-input
-      name="firstName"
-      label="First Name"
-      [(ngModel)]="firstName"
+      name="email"
+      label="Email Address"
+      type="email"
+      [(ngModel)]="email"
       [required]="true"
     />
-    <shift-scheduler-input
-      name="lastName"
-      label="Last Name"
-      [(ngModel)]="lastName"
+
+    <shift-scheduler-select
+      name="company"
+      label="Company"
+      [options]="companies"
+      [(ngModel)]="company"
+      placeholder="Select Company"
       [required]="true"
     />
-  </div>
 
-  <shift-scheduler-input
-    name="email"
-    label="Email Address"
-    type="email"
-    [(ngModel)]="email"
-    [required]="true"
-  />
-
-  <shift-scheduler-select
-    name="company"
-    label="Company"
-    [options]="companies"
-    [(ngModel)]="company"
-    placeholder="Select Company"
-    [required]="true"
-  />
-
-  <shift-scheduler-select
-    name="role"
-    label="Role"
-    [options]="['employee', 'manager', 'admin']"
-    [(ngModel)]="role"
-    placeholder="Select Role"
-    [required]="true"
-  />
-
-  <shift-scheduler-input
-    *ngIf="role === 'employee'"
-    name="managers"
-    label="Manager(s)"
-    placeholder="Comma-separated"
-    [(ngModel)]="managers"
-  />
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <shift-scheduler-input
-      name="password"
-      label="Password"
-      type="password"
-      [(ngModel)]="password"
+    <shift-scheduler-select
+      name="role"
+      label="Role"
+      [options]="['employee', 'manager', 'admin']"
+      [(ngModel)]="role"
+      placeholder="Select Role"
       [required]="true"
     />
+
     <shift-scheduler-input
-      name="confirmPassword"
-      label="Confirm Password"
-      type="password"
-      [(ngModel)]="confirmPassword"
-      [required]="true"
+      *ngIf="role === 'employee'"
+      name="managers"
+      label="Manager(s)"
+      placeholder="Comma-separated"
+      [(ngModel)]="managers"
     />
-  </div>
 
-  <!-- Register button with margin -->
-  <div class="mt-4">
-    <shift-scheduler-button type="submit" variant="primary">
-      Register
-    </shift-scheduler-button>
-  </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <shift-scheduler-input
+        name="password"
+        label="Password"
+        type="password"
+        [(ngModel)]="password"
+        [required]="true"
+      />
+      <shift-scheduler-input
+        name="confirmPassword"
+        label="Confirm Password"
+        type="password"
+        [(ngModel)]="confirmPassword"
+        [required]="true"
+      />
+    </div>
 
-  <!-- Login link -->
-  <div class="text-sm text-center text-gray-600 mt-4">
-    Already have an account?
-    <a [routerLink]="'/auth/login'" class="ml-1 inline-block">
-      <shift-scheduler-button variant="tertiary" type="button">
-        Login
+    <!-- Register button with margin -->
+    <div class="mt-4">
+      <shift-scheduler-button type="submit" variant="primary">
+        Register
       </shift-scheduler-button>
-    </a>
-  </div>
-</form>
+    </div>
+
+    <!-- Login link -->
+    <div class="text-sm text-center text-gray-600 mt-4">
+      Already have an account?
+      <a [routerLink]="'/auth/login'" class="ml-1 inline-block">
+        <shift-scheduler-button variant="tertiary" type="button">
+          Login
+        </shift-scheduler-button>
+      </a>
+    </div>
+  </form>
+</div>

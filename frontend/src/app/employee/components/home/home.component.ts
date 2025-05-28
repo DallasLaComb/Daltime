@@ -1,46 +1,31 @@
-// src/app/employee/components/home/home.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { jwtDecode } from 'jwt-decode';
-import { AuthService } from '../../../auth/auth.service';
-import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
-
-interface SupabaseJwtPayload {
-  sub: string;
-  email?: string;
-  role?: string;
-  exp: number;
-  [key: string]: any;
-}
 
 @Component({
-  selector: 'app-home',
+  selector: 'shift-scheduler-home',
   standalone: true,
-  imports: [CommonModule, ButtonComponent],
+  imports: [CommonModule],
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent implements OnInit {
-  token: string | null = null;
-  decoded: SupabaseJwtPayload | null = null;
+  authData: any = null;
+  role: string = '';
+  firstName: string = '';
+  lastName: string = '';
+  email: string = '';
+  company: string = '';
 
-  constructor(private authService: AuthService) {}
+  ngOnInit() {
+    const raw = localStorage.getItem('authData');
+    if (raw) {
+      this.authData = JSON.parse(raw);
 
-  ngOnInit(): void {
-    this.token = this.authService.getToken();
-
-    if (this.token) {
-      try {
-        this.decoded = jwtDecode<SupabaseJwtPayload>(this.token);
-        console.log('Decoded token:', this.decoded);
-      } catch (error) {
-        console.error('Failed to decode token:', error);
-      }
+      const user = this.authData.user || {};
+      this.role = user.role || '';
+      this.firstName = user.first_name || '';
+      this.lastName = user.last_name || '';
+      this.email = user.email || '';
+      this.company = user.company || '';
     }
-  }
-
-  logout(): void {
-    this.authService.logout();
-    window.location.reload(); // or navigate to login
   }
 }

@@ -48,6 +48,7 @@ Resources:
         Variables:
           SUPABASE_URL: !Ref SupabaseUrl
           SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
       Events:
         LoginApi:
           Type: Api

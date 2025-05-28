@@ -10,7 +10,7 @@ import { AuthService } from '../auth.service';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule, HttpClientModule],
-  templateUrl: './login.component.html', // ✅ using external HTML file
+  templateUrl: './login.component.html',
 })
 export class LoginComponent {
   email = '';
@@ -22,7 +22,8 @@ export class LoginComponent {
   onSubmit(): void {
     this.authService.login(this.email, this.password).subscribe({
       next: (res) => {
-        this.authService.saveToken(res.token);
+        console.log('SAVING AUTH DATA', res);
+        this.authService.saveAuthData(res);
         this.router.navigate(['/employee/home']);
       },
       error: (err) => {

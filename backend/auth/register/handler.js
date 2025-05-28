@@ -27,14 +27,24 @@ exports.handler = async (event) => {
     };
   }
 
-  let email, password;
+  let email, password, firstName, lastName, role, managers, company;
+
   try {
     const parsed = JSON.parse(event.body);
     email = parsed.email;
     password = parsed.password;
+    firstName = parsed.firstName;
+    lastName = parsed.lastName;
+    role = parsed.role;
+    managers = parsed.managers || [];
+    company = parsed.company;
 
-    if (!email || !password) {
-      throw new Error("Email and password are required.");
+    if (!email || !password || !firstName || !lastName || !role || !company) {
+      throw new Error("Missing required fields.");
+    }
+
+    if (role === "employee" && managers.length === 0) {
+      throw new Error("Employees must have at least one manager.");
     }
   } catch (err) {
     return {
@@ -64,15 +74,42 @@ exports.handler = async (event) => {
       }
     );
 
+    const userId = response.data.id;
+
+    await axios.post(
+      `${SUPABASE_URL}/rest/v1/profiles`,
+      {
+        id: userId,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+        company,
+        managers,
+      },
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+      }
+    );
+
     return {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        message: "User created successfully",
+        message: "User and profile created successfully",
         user: response.data,
       }),
     };
   } catch (error) {
+    console.error(
+      "Registration failed:",
+      error.response?.data || error.message
+    ); // helpful for debugging
     return {
       statusCode: error.response?.status || 500,
       headers: corsHeaders,
