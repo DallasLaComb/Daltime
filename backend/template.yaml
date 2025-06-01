@@ -13,7 +13,7 @@ Parameters:
     NoEcho: true
   CorsOrigin:
     Type: String
-    Description: Allowed CORS origin (e.g., "*" for local dev or a specific domain for prod)
+    Default: '*'
 
 Globals:
   Function:
