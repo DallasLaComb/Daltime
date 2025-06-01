@@ -5,15 +5,18 @@ Parameters:
   SupabaseUrl:
     Type: String
     NoEcho: true
+    Description: 'Your Supabase project URL'
   SupabaseAnonKey:
     Type: String
     NoEcho: true
+    Description: 'Your Supabase anon key'
   SupabaseServiceRole:
     Type: String
     NoEcho: true
+    Description: 'Your Supabase service role key'
   CorsOrigin:
     Type: String
-    Default: '*'
+    Description: 'Allowed CORS origin (e.g., https://app.mysite.com)'
 
 Globals:
   Function:
@@ -23,14 +26,18 @@ Globals:
 
 Resources:
   ApiGateway:
-    Type: AWS::Serverless::Api
+    Type: AWS::Serverless::HttpApi
     Properties:
-      Name: ShiftSchedulerApi
       StageName: Prod
-      Cors:
-        AllowOrigin: !Ref CorsOrigin
-        AllowMethods: 'POST,OPTIONS'
-        AllowHeaders: 'Content-Type,Authorization'
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref CorsOrigin
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
 
   RegisterUserFunction:
     Type: AWS::Serverless::Function
@@ -43,11 +50,11 @@ Resources:
           SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
       Events:
         RegisterApi:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /auth/register
             Method: ANY
-            RestApiId: !Ref ApiGateway
+            ApiId: !Ref ApiGateway
 
   LoginUserFunction:
     Type: AWS::Serverless::Function
@@ -61,11 +68,11 @@ Resources:
           SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
       Events:
         LoginApi:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /auth/login
             Method: ANY
-            RestApiId: !Ref ApiGateway
+            ApiId: !Ref ApiGateway
 
   PostShiftFunction:
     Type: AWS::Serverless::Function
@@ -78,8 +85,8 @@ Resources:
           SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
       Events:
         PostShiftApi:
-          Type: Api
+          Type: HttpApi
           Properties:
             Path: /shift/post
             Method: ANY
-            RestApiId: !Ref ApiGateway
+            ApiId: !Ref ApiGateway
