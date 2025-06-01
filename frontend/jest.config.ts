@@ -19,4 +19,5 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   testEnvironment: 'jsdom',
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/'],
+  verbose: true,
 } satisfies Config;
