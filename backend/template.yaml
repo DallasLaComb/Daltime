@@ -11,6 +11,9 @@ Parameters:
   SupabaseServiceRole:
     Type: String
     NoEcho: true
+  CorsOrigin:
+    Type: String
+    Description: Allowed CORS origin (e.g., "*" for local dev or a specific domain for prod)
 
 Globals:
   Function:
@@ -19,6 +22,15 @@ Globals:
     MemorySize: 128
 
 Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ShiftSchedulerApi
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowOrigins: !Sub "'${CorsOrigin}'"
+        AllowHeaders: "'Content-Type,Authorization'"
+
   RegisterUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -33,11 +45,8 @@ Resources:
           Type: Api
           Properties:
             Path: /auth/register
-            Method: ANY # Changed to ANY for better local CORS testing
-            Cors:
-              AllowMethods: "'POST,OPTIONS'"
-              AllowOrigins: "'*'"
-              AllowHeaders: "'Content-Type,Authorization'"
+            Method: ANY
+            RestApiId: !Ref ApiGateway
 
   LoginUserFunction:
     Type: AWS::Serverless::Function
@@ -55,10 +64,7 @@ Resources:
           Properties:
             Path: /auth/login
             Method: ANY
-            Cors:
-              AllowMethods: "'POST,OPTIONS'"
-              AllowOrigins: "'*'"
-              AllowHeaders: "'Content-Type,Authorization'"
+            RestApiId: !Ref ApiGateway
 
   PostShiftFunction:
     Type: AWS::Serverless::Function
@@ -75,7 +81,4 @@ Resources:
           Properties:
             Path: /shift/post
             Method: ANY
-            Cors:
-              AllowMethods: "'POST,OPTIONS'"
-              AllowOrigins: "'*'"
-              AllowHeaders: "'Content-Type,Authorization'"
+            RestApiId: !Ref ApiGateway
