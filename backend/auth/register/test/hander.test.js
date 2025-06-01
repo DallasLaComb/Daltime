@@ -4,7 +4,7 @@
 process.env.SUPABASE_URL = 'https://fake.supabase.io';
 process.env.SUPABASE_SERVICE_ROLE = 'fake-service-role';
 
-const { handler } = require('../handler'); // import AFTER setting env
+const { handler } = require('../handler'); 
 const axios = require('axios');
 jest.mock('axios');
 
@@ -33,7 +33,7 @@ describe('Register Lambda Handler', () => {
   it('should return 400 if required fields are missing', async () => {
     const event = {
       httpMethod: 'POST',
-      body: JSON.stringify({ email: 'a@b.com' }) // missing other fields
+      body: JSON.stringify({ email: 'a@b.com' }) 
     };
     const res = await handler(event);
     expect(res.statusCode).toBe(400);
