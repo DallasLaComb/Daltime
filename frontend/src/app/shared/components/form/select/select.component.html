@@ -1,0 +1,42 @@
+<div class="w-full">
+  <label [for]="name" class="block mb-1 text-sm font-medium text-gray-700">
+    {{ label }}
+    <span *ngIf="required" class="text-red-500">*</span>
+  </label>
+
+  <div class="relative">
+    <select
+      [id]="name"
+      [name]="name"
+      [required]="required"
+      [disabled]="disabled"
+      [value]="value"
+      (change)="handleChange($event)"
+      (blur)="onTouched()"
+      class="block w-full pl-4 pr-10 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+    >
+      <option value="" disabled selected hidden>{{ placeholder }}</option>
+      <option *ngFor="let option of options" [value]="option">
+        {{ option }}
+      </option>
+    </select>
+    <!-- Dropdown arrow icon -->
+    <div
+      class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
+    >
+      <svg
+        class="h-4 w-4 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 20 20"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M7 7l3-3 3 3m0 6l-3 3-3-3"
+        />
+      </svg>
+    </div>
+  </div>
+</div>

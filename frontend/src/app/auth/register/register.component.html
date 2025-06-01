@@ -1,81 +1,243 @@
-<div class="min-h-screen flex items-center justify-center bg-gray-100">
-  <div class="bg-white p-10 rounded-lg shadow-md w-full max-w-md">
-    <h2 class="text-xl font-bold text-blue-600 mb-8">Auto Scheduler</h2>
-
-    <h3 class="text-2xl font-bold text-blue-600 mb-4 leading-snug">
-      Create an account <br />
-      and start scheduling shifts.
-    </h3>
-
-    <p class="text-sm text-gray-600 mb-8">
-      Join us today! Fill in your details to get started.
-    </p>
-
-    <form>
-      <div class="mb-4">
-        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-          Full Name
-        </label>
-        <input
-          type="text"
-          id="name"
-          placeholder="Jane Doe"
-          class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div class="mb-4">
-        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-          Email Address
-        </label>
-        <input
-          type="email"
-          id="email"
-          placeholder="janedoe@example.com"
-          class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div class="mb-4">
-        <label
-          for="password"
-          class="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Password
-        </label>
-        <input
-          type="password"
-          id="password"
-          placeholder="***************"
-          class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div class="mb-6">
-        <label
-          for="confirm-password"
-          class="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Confirm Password
-        </label>
-        <input
-          type="password"
-          id="confirm-password"
-          placeholder="***************"
-          class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <button
-        class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded shadow-md transition duration-200 w-full"
+<div class="min-h-screen flex items-center justify-center bg-gray-50">
+  <div
+    class="flex flex-col md:flex-row w-full max-w-5xl bg-white rounded-xl shadow-lg overflow-hidden"
+  >
+    <!-- Left: Registration Form -->
+    <div class="flex-1 flex items-center justify-center p-6">
+      <form
+        (ngSubmit)="register()"
+        #registerForm="ngForm"
+        class="w-full max-w-xl space-y-6"
       >
-        Register
-      </button>
-    </form>
+        <h2 class="text-2xl font-bold text-gray-800">Create an Account</h2>
 
-    <p class="text-sm text-gray-600 text-center mt-6">
-      Already have an account?
-      <a href="/auth/login" class="text-blue-600 hover:underline">Login here</a>
-    </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <shift-scheduler-input
+            name="firstName"
+            label="First Name"
+            [(ngModel)]="firstName"
+            [required]="true"
+          />
+          <shift-scheduler-input
+            name="lastName"
+            label="Last Name"
+            [(ngModel)]="lastName"
+            [required]="true"
+          />
+        </div>
+        <div *ngIf="firstNameTooLong" class="text-xs text-red-600 mb-2">
+          First name must be 30 characters or less.
+        </div>
+        <div *ngIf="lastNameTooLong" class="text-xs text-red-600 mb-2">
+          Last name must be 30 characters or less.
+        </div>
+
+        <shift-scheduler-input
+          name="email"
+          label="Email Address"
+          type="email"
+          [(ngModel)]="email"
+          [required]="true"
+        />
+        <div *ngIf="invalidEmail" class="text-xs text-red-600 mb-2">
+          Please enter a valid email address.
+        </div>
+
+        <shift-scheduler-select
+          name="company"
+          label="Company"
+          [options]="companies"
+          [(ngModel)]="company"
+          placeholder="Select Company"
+          [required]="true"
+        />
+
+        <shift-scheduler-select
+          name="role"
+          label="Role"
+          [options]="['employee', 'manager', 'admin']"
+          [(ngModel)]="role"
+          placeholder="Select Role"
+          [required]="true"
+        />
+
+        <shift-scheduler-input
+          *ngIf="role === 'employee'"
+          name="managers"
+          label="Manager(s)"
+          placeholder="Comma-separated"
+          [(ngModel)]="managers"
+          [required]="role === 'employee'"
+        />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <shift-scheduler-input
+            name="password"
+            label="Password"
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="password"
+            [required]="true"
+          />
+          <shift-scheduler-input
+            name="confirmPassword"
+            label="Confirm Password"
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="confirmPassword"
+            [required]="true"
+          />
+        </div>
+
+        <!-- Show Password Checkbox -->
+        <div class="flex items-center mt-2 mb-2">
+          <input
+            id="showPassword"
+            type="checkbox"
+            [(ngModel)]="showPassword"
+            name="showPassword"
+            class="mr-2"
+          />
+          <label for="showPassword" class="text-sm select-none cursor-pointer">
+            Show Password
+          </label>
+        </div>
+
+        <!-- Password requirements card with Material icons and colored text -->
+        <div
+          class="bg-gray-50 border border-gray-200 rounded-lg p-4 my-2 w-full max-w-md mx-auto"
+        >
+          <div class="font-semibold text-sm mb-2">
+            Password must meet all of the following:
+          </div>
+          <ul class="space-y-1">
+            <li
+              class="flex items-center gap-2 text-red-600"
+              *ngIf="
+                password.length === 0 || passwordTooShort || passwordTooLong
+              "
+            >
+              <mat-icon color="warn">close</mat-icon>
+              <span>8-20 characters</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-green-600"
+              *ngIf="
+                password.length > 0 && !passwordTooShort && !passwordTooLong
+              "
+            >
+              <mat-icon color="primary">check_circle</mat-icon>
+              <span>8-20 characters</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-red-600"
+              *ngIf="password.length === 0 || passwordMissingUpper"
+            >
+              <mat-icon color="warn">close</mat-icon>
+              <span>At least one uppercase letter</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-green-600"
+              *ngIf="password.length > 0 && !passwordMissingUpper"
+            >
+              <mat-icon color="primary">check_circle</mat-icon>
+              <span>At least one uppercase letter</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-red-600"
+              *ngIf="password.length === 0 || passwordMissingLower"
+            >
+              <mat-icon color="warn">close</mat-icon>
+              <span>At least one lowercase letter</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-green-600"
+              *ngIf="password.length > 0 && !passwordMissingLower"
+            >
+              <mat-icon color="primary">check_circle</mat-icon>
+              <span>At least one lowercase letter</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-red-600"
+              *ngIf="password.length === 0 || passwordMissingNumber"
+            >
+              <mat-icon color="warn">close</mat-icon>
+              <span>At least one number</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-green-600"
+              *ngIf="password.length > 0 && !passwordMissingNumber"
+            >
+              <mat-icon color="primary">check_circle</mat-icon>
+              <span>At least one number</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-red-600"
+              *ngIf="password.length === 0 || passwordMissingSpecial"
+            >
+              <mat-icon color="warn">close</mat-icon>
+              <span>At least one special character</span>
+            </li>
+            <li
+              class="flex items-center gap-2 text-green-600"
+              *ngIf="password.length > 0 && !passwordMissingSpecial"
+            >
+              <mat-icon color="primary">check_circle</mat-icon>
+              <span>At least one special character</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Registration error message -->
+        <div *ngIf="registrationError" class="text-sm text-red-600 mb-2">
+          {{ registrationError }}
+        </div>
+        <!-- Registration success message -->
+        <div *ngIf="registrationSuccess" class="text-sm text-green-600 mb-2">
+          Registration successful! Redirecting to login...
+        </div>
+
+        <!-- Spinner shown while loading, centered on screen -->
+        <div
+          *ngIf="isLoading"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80"
+        >
+          <shift-scheduler-spinner
+            [show]="true"
+            message="Registering..."
+          ></shift-scheduler-spinner>
+        </div>
+
+        <!-- Required field note -->
+        <div class="text-xs text-gray-500 mt-2 mb-2">
+          <span class="text-red-500">*</span> indicates a required field.
+        </div>
+
+        <!-- Register button with margin -->
+        <div class="mt-4">
+          <shift-scheduler-button
+            type="submit"
+            variant="primary"
+            [disabled]="!isFormValid"
+          >
+            Register
+          </shift-scheduler-button>
+        </div>
+
+        <!-- Login link -->
+        <div class="text-sm text-center text-gray-600 mt-4">
+          Already have an account?
+          <a [routerLink]="'/auth/login'" class="ml-1 inline-block">
+            <shift-scheduler-button variant="tertiary" type="button">
+              Login
+            </shift-scheduler-button>
+          </a>
+        </div>
+      </form>
+    </div>
+    <!-- Right: Community Image -->
+    <div
+      class="hidden md:flex flex-1 items-stretch justify-center bg-blue-50 p-0"
+    >
+      <img src="assets/register.jpg" class="w-full h-full object-cover" />
+    </div>
   </div>
 </div>

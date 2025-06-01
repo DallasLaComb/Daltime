@@ -1,8 +1,18 @@
 {
-  "devDependencies": {
-    "dotenv-cli": "^8.0.0"
-  },
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "dev": "dotenv -- sam local start-api --parameter-overrides \"ParameterKey=SupabaseUrl,ParameterValue=$SUPABASE_URL\" \"ParameterKey=SupabaseAnonKey,ParameterValue=$SUPABASE_ANON_KEY\" \"ParameterKey=SupabaseServiceRole,ParameterValue=$SUPABASE_SERVICE_ROLE\""
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testMatch": [
+      "**/test/**/*.test.js"
+    ],
+    "testEnvironment": "node"
   }
 }

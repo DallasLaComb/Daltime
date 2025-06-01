@@ -1,0 +1,17 @@
+<div class="w-full">
+  <label [for]="name" class="block mb-1 text-sm font-medium text-gray-700">
+    {{ label }} <span *ngIf="required" class="text-red-500">*</span>
+  </label>
+  <input
+    [type]="type"
+    [id]="name"
+    [name]="name"
+    [placeholder]="placeholder"
+    [required]="required"
+    [disabled]="disabled"
+    [value]="value"
+    (input)="handleChange($event)"
+    (blur)="onTouched()"
+    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:outline-none"
+  />
+</div>

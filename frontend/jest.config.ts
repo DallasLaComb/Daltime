@@ -10,10 +10,14 @@ export default {
     '^src/(.*)$': '<rootDir>/src/$1',
     '^app/(.*)$': '<rootDir>/src/app/$1',
     '^environments/(.*)$': '<rootDir>/src/environments/$1',
+
+    '^@CommonShiftScheduler/(.*)$': '<rootDir>/src/app/shared/components/$1',
+
     '\\.(css|scss|sass|less)$': 'identity-obj-proxy',
   },
   transformIgnorePatterns: ['node_modules/(?!(@angular|rxjs|tslib)/)'],
   extensionsToTreatAsEsm: ['.ts'],
   testEnvironment: 'jsdom',
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/'],
+  verbose: true,
 } satisfies Config;
