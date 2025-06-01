@@ -28,13 +28,9 @@ Resources:
       Name: ShiftSchedulerApi
       StageName: Prod
       Cors:
-        AllowMethods:
-          - POST
-          - OPTIONS
         AllowOrigin: !Ref CorsOrigin
-        AllowHeaders:
-          - Content-Type
-          - Authorization
+        AllowMethods: 'POST,OPTIONS'
+        AllowHeaders: 'Content-Type,Authorization'
 
   RegisterUserFunction:
     Type: AWS::Serverless::Function
