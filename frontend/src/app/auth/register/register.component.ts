@@ -6,6 +6,7 @@ import { SelectComponent } from '@CommonShiftScheduler/form/select/select.compon
 import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 import { NgIf } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'shift-scheduler-register',
@@ -18,6 +19,7 @@ import { RouterModule } from '@angular/router';
     ButtonComponent,
     NgIf,
     RouterModule,
+    MatIconModule,
   ],
 })
 export class RegisterComponent {
@@ -31,12 +33,49 @@ export class RegisterComponent {
   managers = '';
   password = '';
   confirmPassword = '';
+  passwordTouched = false;
 
   companies = ['Meriden YMCA', 'Southington YMCA', 'Wallingford YMCA'];
 
+  // Password strength validation
+  isPasswordStrong(password: string): boolean {
+    // At least 8, max 20, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    const strongRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,20}$/;
+    return strongRegex.test(password);
+  }
+
+  // Password requirement checks for template
+  get passwordTooShort(): boolean {
+    return this.password.length > 0 && this.password.length < 8;
+  }
+  get passwordTooLong(): boolean {
+    return this.password.length > 20;
+  }
+  get passwordMissingUpper(): boolean {
+    return this.password.length > 0 && !/[A-Z]/.test(this.password);
+  }
+  get passwordMissingLower(): boolean {
+    return this.password.length > 0 && !/[a-z]/.test(this.password);
+  }
+  get passwordMissingNumber(): boolean {
+    return this.password.length > 0 && !/[0-9]/.test(this.password);
+  }
+  get passwordMissingSpecial(): boolean {
+    return (
+      this.password.length > 0 &&
+      !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(this.password)
+    );
+  }
+
   register() {
+    this.passwordTouched = true;
     if (this.password !== this.confirmPassword) {
       alert('Passwords do not match.');
+      return;
+    }
+    if (!this.isPasswordStrong(this.password)) {
+      // Do not alert, show message in template
       return;
     }
 
