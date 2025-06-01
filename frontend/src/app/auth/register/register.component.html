@@ -65,17 +65,31 @@
           <shift-scheduler-input
             name="password"
             label="Password"
-            type="password"
+            [type]="showPassword ? 'text' : 'password'"
             [(ngModel)]="password"
             [required]="true"
           />
           <shift-scheduler-input
             name="confirmPassword"
             label="Confirm Password"
-            type="password"
+            [type]="showPassword ? 'text' : 'password'"
             [(ngModel)]="confirmPassword"
             [required]="true"
           />
+        </div>
+
+        <!-- Show Password Checkbox -->
+        <div class="flex items-center mt-2 mb-2">
+          <input
+            id="showPassword"
+            type="checkbox"
+            [(ngModel)]="showPassword"
+            name="showPassword"
+            class="mr-2"
+          />
+          <label for="showPassword" class="text-sm select-none cursor-pointer">
+            Show Password
+          </label>
         </div>
 
         <!-- Password requirements card with Material icons and colored text -->

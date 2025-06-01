@@ -34,6 +34,7 @@ export class RegisterComponent {
   password = '';
   confirmPassword = '';
   passwordTouched = false;
+  showPassword = false;
 
   companies = ['Meriden YMCA', 'Southington YMCA', 'Wallingford YMCA'];
 
