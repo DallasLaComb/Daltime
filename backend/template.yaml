@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
@@ -26,6 +26,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       Name: ShiftSchedulerApi
+      StageName: Prod 
       Cors:
         AllowMethods: "'POST,OPTIONS'"
         AllowOrigins: !Sub "'${CorsOrigin}'"
