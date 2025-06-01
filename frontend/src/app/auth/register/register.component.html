@@ -25,6 +25,12 @@
             [required]="true"
           />
         </div>
+        <div *ngIf="firstNameTooLong" class="text-xs text-red-600 mb-2">
+          First name must be 30 characters or less.
+        </div>
+        <div *ngIf="lastNameTooLong" class="text-xs text-red-600 mb-2">
+          Last name must be 30 characters or less.
+        </div>
 
         <shift-scheduler-input
           name="email"
@@ -33,6 +39,9 @@
           [(ngModel)]="email"
           [required]="true"
         />
+        <div *ngIf="invalidEmail" class="text-xs text-red-600 mb-2">
+          Please enter a valid email address.
+        </div>
 
         <shift-scheduler-select
           name="company"
@@ -184,7 +193,11 @@
 
         <!-- Register button with margin -->
         <div class="mt-4">
-          <shift-scheduler-button type="submit" variant="primary">
+          <shift-scheduler-button
+            type="submit"
+            variant="primary"
+            [disabled]="!isFormValid"
+          >
             Register
           </shift-scheduler-button>
         </div>

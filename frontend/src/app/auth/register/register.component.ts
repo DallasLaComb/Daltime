@@ -69,8 +69,48 @@ export class RegisterComponent {
     );
   }
 
+  // Validation helpers
+  get firstNameTooLong(): boolean {
+    return this.firstName.length > 30;
+  }
+  get lastNameTooLong(): boolean {
+    return this.lastName.length > 30;
+  }
+  get invalidEmail(): boolean {
+    // Simple email regex
+    return this.email.length > 0 && !/^\S+@\S+\.\S+$/.test(this.email);
+  }
+
+  get isFormValid(): boolean {
+    return (
+      this.firstName.length > 0 &&
+      !this.firstNameTooLong &&
+      this.lastName.length > 0 &&
+      !this.lastNameTooLong &&
+      this.email.length > 0 &&
+      !this.invalidEmail &&
+      this.company.length > 0 &&
+      this.role.length > 0 &&
+      (this.role !== 'employee' || this.managers.length > 0) &&
+      this.password === this.confirmPassword &&
+      this.isPasswordStrong(this.password)
+    );
+  }
+
   register() {
     this.passwordTouched = true;
+    if (this.firstNameTooLong) {
+      alert('First name must be 30 characters or less.');
+      return;
+    }
+    if (this.lastNameTooLong) {
+      alert('Last name must be 30 characters or less.');
+      return;
+    }
+    if (this.invalidEmail) {
+      alert('Please enter a valid email address.');
+      return;
+    }
     if (this.password !== this.confirmPassword) {
       alert('Passwords do not match.');
       return;
