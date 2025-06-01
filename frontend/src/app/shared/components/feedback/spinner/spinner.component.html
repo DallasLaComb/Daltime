@@ -1,1 +1,4 @@
-<p>spinner works!</p>
+<div class="flex justify-center items-center" *ngIf="show">
+  <mat-icon class="animate-spin text-4xl text-blue-500">autorenew</mat-icon>
+  <span *ngIf="message" class="ml-2 text-blue-500 text-sm">{{ message }}</span>
+</div>

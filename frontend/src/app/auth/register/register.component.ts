@@ -5,8 +5,9 @@ import { InputComponent } from '@CommonShiftScheduler/form/input/input.component
 import { SelectComponent } from '@CommonShiftScheduler/form/select/select.component';
 import { ButtonComponent } from '@CommonShiftScheduler/ui/button/button.component';
 import { NgIf } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { SpinnerComponent } from '../../shared/components/feedback/spinner/spinner.component';
 
 @Component({
   selector: 'shift-scheduler-register',
@@ -20,10 +21,12 @@ import { MatIconModule } from '@angular/material/icon';
     NgIf,
     RouterModule,
     MatIconModule,
+    SpinnerComponent,
   ],
 })
 export class RegisterComponent {
   http = inject(HttpClient);
+  router = inject(Router);
 
   firstName = '';
   lastName = '';
@@ -35,8 +38,12 @@ export class RegisterComponent {
   confirmPassword = '';
   passwordTouched = false;
   showPassword = false;
+  isLoading = false;
 
   companies = ['Meriden YMCA', 'Southington YMCA', 'Wallingford YMCA'];
+
+  registrationError: string | null = null;
+  registrationSuccess: boolean = false;
 
   // Password strength validation
   isPasswordStrong(password: string): boolean {
@@ -99,24 +106,33 @@ export class RegisterComponent {
 
   register() {
     this.passwordTouched = true;
+    this.registrationError = null;
+    this.registrationSuccess = false;
+    this.isLoading = true;
     if (this.firstNameTooLong) {
-      alert('First name must be 30 characters or less.');
+      this.registrationError = 'First name must be 30 characters or less.';
+      this.isLoading = false;
       return;
     }
     if (this.lastNameTooLong) {
-      alert('Last name must be 30 characters or less.');
+      this.registrationError = 'Last name must be 30 characters or less.';
+      this.isLoading = false;
       return;
     }
     if (this.invalidEmail) {
-      alert('Please enter a valid email address.');
+      this.registrationError = 'Please enter a valid email address.';
+      this.isLoading = false;
       return;
     }
     if (this.password !== this.confirmPassword) {
-      alert('Passwords do not match.');
+      this.registrationError = 'Passwords do not match.';
+      this.isLoading = false;
       return;
     }
     if (!this.isPasswordStrong(this.password)) {
       // Do not alert, show message in template
+      this.registrationError = 'Password does not meet requirements.';
+      this.isLoading = false;
       return;
     }
 
@@ -135,12 +151,18 @@ export class RegisterComponent {
 
     this.http.post('http://localhost:3000/auth/register', payload).subscribe({
       next: (res) => {
+        this.isLoading = false;
         console.log('Registration successful:', res);
-        alert('User registered successfully!');
+        this.registrationSuccess = true;
+        setTimeout(() => {
+          this.router.navigate(['/auth/login']);
+        }, 1200);
       },
       error: (err) => {
+        this.isLoading = false;
         console.error('Registration failed:', err);
-        alert('Registration failed. Check the console for details.');
+        this.registrationError =
+          'Registration failed. Check the console for details.';
       },
     });
   }

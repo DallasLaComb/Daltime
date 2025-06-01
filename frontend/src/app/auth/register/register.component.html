@@ -186,6 +186,26 @@
           </ul>
         </div>
 
+        <!-- Registration error message -->
+        <div *ngIf="registrationError" class="text-sm text-red-600 mb-2">
+          {{ registrationError }}
+        </div>
+        <!-- Registration success message -->
+        <div *ngIf="registrationSuccess" class="text-sm text-green-600 mb-2">
+          Registration successful! Redirecting to login...
+        </div>
+
+        <!-- Spinner shown while loading, centered on screen -->
+        <div
+          *ngIf="isLoading"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80"
+        >
+          <shift-scheduler-spinner
+            [show]="true"
+            message="Registering..."
+          ></shift-scheduler-spinner>
+        </div>
+
         <!-- Required field note -->
         <div class="text-xs text-gray-500 mt-2 mb-2">
           <span class="text-red-500">*</span> indicates a required field.
