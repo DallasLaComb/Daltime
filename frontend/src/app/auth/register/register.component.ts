@@ -8,6 +8,7 @@ import { NgIf } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { SpinnerComponent } from '../../shared/components/feedback/spinner/spinner.component';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'shift-scheduler-register',
@@ -104,6 +105,10 @@ export class RegisterComponent {
     );
   }
 
+  get apiBaseUrl(): string {
+    return environment.apiBaseUrl;
+  }
+
   register() {
     this.passwordTouched = true;
     this.registrationError = null;
@@ -149,7 +154,7 @@ export class RegisterComponent {
       password: this.password,
     };
 
-    this.http.post('http://localhost:3000/auth/register', payload).subscribe({
+    this.http.post(`${this.apiBaseUrl}/auth/register`, payload).subscribe({
       next: (res) => {
         this.isLoading = false;
         console.log('Registration successful:', res);
