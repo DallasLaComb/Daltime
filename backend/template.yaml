@@ -34,7 +34,11 @@ Resources:
         AllowOrigins:
           - !Ref CorsOrigin
         AllowMethods:
+          - GET
           - POST
+          - PUT
+          - PATCH
+          - DELETE
           - OPTIONS
         AllowHeaders:
           - Content-Type
