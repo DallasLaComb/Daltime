@@ -14,9 +14,12 @@ Parameters:
     Type: String
     NoEcho: true
     Description: 'Your Supabase service role key'
+Parameters:
   CorsOrigin:
     Type: String
+    Default: '*'
     Description: 'Allowed CORS origin (e.g., https://app.mysite.com)'
+
 
 Globals:
   Function:
