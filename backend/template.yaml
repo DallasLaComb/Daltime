@@ -58,7 +58,7 @@ Resources:
           Type: HttpApi
           Properties:
             Path: /auth/register
-            Method: ANY
+            Method: POST
             ApiId: !Ref ApiGateway
 
   LoginUserFunction:
@@ -76,7 +76,7 @@ Resources:
           Type: HttpApi
           Properties:
             Path: /auth/login
-            Method: ANY
+            Method: POST
             ApiId: !Ref ApiGateway
 
   PostShiftFunction:
@@ -93,5 +93,5 @@ Resources:
           Type: HttpApi
           Properties:
             Path: /shift/post
-            Method: ANY
+            Method: POST
             ApiId: !Ref ApiGateway
