@@ -14,11 +14,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: Build Angular
+      - name: Build Angular (production)
         run: |
           cd frontend
           npm ci
-          npm run build
+          npm run build -- --configuration production
 
       - name: Upload to S3
         uses: jakejarvis/s3-sync-action@v0.5.1
