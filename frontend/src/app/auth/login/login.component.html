@@ -63,6 +63,17 @@
           </a>
         </div>
       </form>
+
+      <!-- Full-screen spinner overlay -->
+      <div
+        *ngIf="isLoading"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80"
+      >
+        <shift-scheduler-spinner
+          [show]="true"
+          message="Logging in..."
+        ></shift-scheduler-spinner>
+      </div>
     </div>
     <!-- Right: Image -->
     <div

@@ -18,6 +18,11 @@ const routes: Routes = [
       import('../employee/employee.module').then((m) => m.EmployeeModule),
   },
   {
+    path: 'admin',
+    loadChildren: () =>
+      import('../admin/admin.module').then((m) => m.AdminModule),
+  },
+  {
     path: '',
     redirectTo: 'auth/login',
     pathMatch: 'full',
