@@ -52,7 +52,7 @@ jobs:
             --parameter-overrides \
               SupabaseUrl=${{ secrets.SUPABASE_URL }} \
               SupabaseAnonKey=${{ secrets.SUPABASE_ANON_KEY }} \
-              SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }}
+              SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }} \
               CorsOrigin=http://shift-scheduler-bucket.s3-website.us-east-2.amazonaws.com
 
         env:
