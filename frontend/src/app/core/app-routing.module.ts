@@ -1,6 +1,8 @@
 // src/app/app-routing.module.ts
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard } from '../auth/auth.guard';
+import { DashboardRedirectComponent } from '../dashboard-redirect.component';
 
 const routes: Routes = [
   {
@@ -9,13 +11,31 @@ const routes: Routes = [
   },
   {
     path: 'manager',
+    canLoad: [AuthGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('../manager/manager.module').then((m) => m.ManagerModule),
   },
   {
     path: 'employee',
+    canLoad: [AuthGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('../employee/employee.module').then((m) => m.EmployeeModule),
+  },
+  {
+    path: 'admin',
+    canLoad: [AuthGuard],
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('../admin/admin.module').then((m) => m.AdminModule),
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('../dashboard-redirect.component').then(
+        (m) => m.DashboardRedirectComponent
+      ),
   },
   {
     path: '',

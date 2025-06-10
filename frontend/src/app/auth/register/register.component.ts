@@ -9,6 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { SpinnerComponent } from '../../shared/components/feedback/spinner/spinner.component';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'shift-scheduler-register',
@@ -28,6 +29,7 @@ import { environment } from '../../../environments/environment';
 export class RegisterComponent {
   http = inject(HttpClient);
   router = inject(Router);
+  private auth = inject(AuthService);
 
   firstName = '';
   lastName = '';
@@ -135,7 +137,6 @@ export class RegisterComponent {
       return;
     }
     if (!this.isPasswordStrong(this.password)) {
-      // Do not alert, show message in template
       this.registrationError = 'Password does not meet requirements.';
       this.isLoading = false;
       return;
@@ -154,10 +155,9 @@ export class RegisterComponent {
       password: this.password,
     };
 
-    this.http.post(`${this.apiBaseUrl}/auth/register`, payload).subscribe({
+    this.auth.register(payload).subscribe({
       next: (res) => {
         this.isLoading = false;
-        console.log('Registration successful:', res);
         this.registrationSuccess = true;
         setTimeout(() => {
           this.router.navigate(['/auth/login']);
@@ -165,9 +165,10 @@ export class RegisterComponent {
       },
       error: (err) => {
         this.isLoading = false;
-        console.error('Registration failed:', err);
         this.registrationError =
+          err?.error?.error ||
           'Registration failed. Check the console for details.';
+        console.error('Registration failed:', err);
       },
     });
   }

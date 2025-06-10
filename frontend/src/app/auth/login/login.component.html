@@ -1,38 +1,85 @@
-<div class="max-w-md mx-auto mt-20 p-6 bg-white rounded shadow">
-  <h2 class="text-xl font-bold mb-4">Login</h2>
+<div class="min-h-screen flex items-center justify-center bg-gray-50">
+  <div
+    class="flex flex-col md:flex-row w-full max-w-5xl bg-white rounded-xl shadow-lg overflow-hidden"
+  >
+    <!-- Left: Login Form -->
+    <div class="flex-1 flex items-center justify-center p-6">
+      <form
+        (ngSubmit)="onSubmit()"
+        #loginForm="ngForm"
+        class="w-full max-w-xl space-y-6"
+      >
+        <h2 class="text-2xl font-bold text-gray-800">Login</h2>
 
-  <form (ngSubmit)="onSubmit()">
-    <div class="mb-4">
-      <label for="email" class="block mb-1">Email</label>
-      <input
-        id="email"
-        name="email"
-        [(ngModel)]="email"
-        type="email"
-        class="w-full border px-3 py-2 rounded"
-        required
-      />
+        <shift-scheduler-input
+          name="email"
+          label="Email Address"
+          type="email"
+          [(ngModel)]="email"
+          [required]="true"
+        />
+
+        <shift-scheduler-input
+          name="password"
+          label="Password"
+          type="password"
+          [(ngModel)]="password"
+          [required]="true"
+        />
+
+        <div *ngIf="error" class="text-sm text-red-600 mb-2">
+          {{ error }}
+        </div>
+
+        <!-- Required field note -->
+        <div class="text-xs text-gray-500 mt-2 mb-2">
+          <span class="text-red-500">*</span> indicates a required field.
+        </div>
+
+        <div class="flex items-center justify-between mt-2 mb-2">
+          <a
+            routerLink="/auth/forgot-password"
+            class="text-sm text-blue-600 hover:underline"
+            >Forgot password?</a
+          >
+        </div>
+
+        <div class="mt-4">
+          <shift-scheduler-button
+            type="submit"
+            variant="primary"
+            class="w-full"
+          >
+            Login
+          </shift-scheduler-button>
+        </div>
+
+        <div class="text-sm text-center text-gray-600 mt-4">
+          Don't have an account?
+          <a [routerLink]="'/auth/register'" class="ml-1 inline-block">
+            <shift-scheduler-button variant="tertiary" type="button">
+              Register
+            </shift-scheduler-button>
+          </a>
+        </div>
+      </form>
+
+      <!-- Full-screen spinner overlay -->
+      <div
+        *ngIf="isLoading"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80"
+      >
+        <shift-scheduler-spinner
+          [show]="true"
+          message="Logging in..."
+        ></shift-scheduler-spinner>
+      </div>
     </div>
-
-    <div class="mb-4">
-      <label for="password" class="block mb-1">Password</label>
-      <input
-        id="password"
-        name="password"
-        [(ngModel)]="password"
-        type="password"
-        class="w-full border px-3 py-2 rounded"
-        required
-      />
-    </div>
-
-    <div *ngIf="error" class="text-red-500 mb-4">{{ error }}</div>
-
-    <button
-      type="submit"
-      class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+    <!-- Right: Image -->
+    <div
+      class="hidden md:flex flex-1 items-stretch justify-center bg-blue-50 p-0"
     >
-      Login
-    </button>
-  </form>
+      <img src="assets/register.jpg" class="w-full h-full object-cover" />
+    </div>
+  </div>
 </div>
