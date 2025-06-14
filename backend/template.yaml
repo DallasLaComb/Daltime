@@ -51,11 +51,13 @@ Resources:
   RegisterUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: auth/register/
-      Handler: handler.handler
+      CodeUri: .
+      Handler: auth/register/handler.handler
       Environment:
         Variables:
           SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
       Events:
         RegisterApi:
           Type: HttpApi
@@ -67,8 +69,8 @@ Resources:
   LoginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: auth/login/
-      Handler: handler.handler
+      CodeUri: .
+      Handler: auth/login/handler.handler
       Environment:
         Variables:
           SUPABASE_URL: !Ref SupabaseUrl
@@ -85,8 +87,8 @@ Resources:
   PostShiftFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: shift-api/postShift/
-      Handler: handler.handler
+      CodeUri: .
+      Handler: shift-api/postShift/handler.handler
       Environment:
         Variables:
           SUPABASE_URL: !Ref SupabaseUrl
