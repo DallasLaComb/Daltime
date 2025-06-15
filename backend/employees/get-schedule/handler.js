@@ -8,6 +8,10 @@ const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
+    // Calculate summary statisticsPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
 exports.handler = async (event) => {
   try {
     // Handle CORS preflight
@@ -106,7 +110,7 @@ exports.handler = async (event) => {
     // Validate sort parameters
     const validSortColumns = ['date', 'starttime', 'assignedat'];
     const validSortOrders = ['asc', 'desc'];
-    const validStatuses = ['assigned', 'completed', 'cancelled', 'all'];
+    const validStatuses = ['assigned', 'available', 'completed', 'cancelled', 'all'];
 
     if (!validSortColumns.includes(sortBy)) {
       return responses.badRequest(
@@ -143,6 +147,7 @@ exports.handler = async (event) => {
           sa.starttime as assignment_starttime,
           sa.endtime as assignment_endtime,
           sa.notes as assignment_notes,
+          sa.ownership_history,
           s.date,
           s.starttime as shift_starttime,
           s.endtime as shift_endtime,
@@ -245,6 +250,16 @@ exports.handler = async (event) => {
         },
         assignedAt: assignment.assignedat,
         shiftCreatedAt: assignment.shift_createdat,
+        // Add ownership history information
+        ownershipHistory: assignment.ownership_history || [],
+        isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
+        transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
+        originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+          ? assignment.ownership_history[0] 
+          : null,
+        currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+          ? assignment.ownership_history[assignment.ownership_history.length - 1] 
+          : null,
       });
     });
 
@@ -279,6 +294,7 @@ exports.handler = async (event) => {
       },
       assignmentsByStatus: {
         assigned: schedule.filter((a) => a.status === 'assigned').length,
+        available: schedule.filter((a) => a.status === 'available').length,
         completed: schedule.filter((a) => a.status === 'completed').length,
         cancelled: schedule.filter((a) => a.status === 'cancelled').length,
       },
@@ -329,6 +345,16 @@ exports.handler = async (event) => {
         },
         assignedAt: assignment.assignedat,
         shiftCreatedAt: assignment.shift_createdat,
+        // Add ownership history information
+        ownershipHistory: assignment.ownership_history || [],
+        isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
+        transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
+        originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+          ? assignment.ownership_history[0] 
+          : null,
+        currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+          ? assignment.ownership_history[assignment.ownership_history.length - 1] 
+          : null,
       })),
       scheduleByDate: scheduleByDate,
       summary: summary,

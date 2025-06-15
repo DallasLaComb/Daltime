@@ -115,7 +115,7 @@ exports.handler = async (event) => {
             shiftid, 
             COUNT(*) as assigned_count
           FROM public.shiftassignment 
-          WHERE status = 'assigned'
+          WHERE status IN ('assigned', 'available')
           GROUP BY shiftid
         ) assignments ON s.shiftid = assignments.shiftid
         WHERE s.managerid = $1 
@@ -150,6 +150,7 @@ exports.handler = async (event) => {
             sa.starttime as assignment_starttime,
             sa.endtime as assignment_endtime,
             sa.notes as assignment_notes,
+            sa.ownership_history,
             au.userid as employeeid,
             au.firstname,
             au.lastname,
@@ -158,7 +159,7 @@ exports.handler = async (event) => {
           FROM public.shiftassignment sa
           INNER JOIN public.appuser au ON sa.employeeid = au.userid
           WHERE sa.shiftid = ANY($1::uuid[])
-          AND sa.status IN ('assigned', 'completed', 'cancelled')
+          AND sa.status IN ('assigned', 'available', 'completed', 'cancelled')
           ORDER BY sa.assignedat, au.lastname, au.firstname
         `;
 
@@ -184,6 +185,16 @@ exports.handler = async (event) => {
             startTime: assignment.assignment_starttime,
             endTime: assignment.assignment_endtime,
             notes: assignment.assignment_notes,
+            // Add ownership history information
+            ownershipHistory: assignment.ownership_history || [],
+            isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
+            transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
+            originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+              ? assignment.ownership_history[0] 
+              : null,
+            currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+              ? assignment.ownership_history[assignment.ownership_history.length - 1] 
+              : null,
           });
         });
       } finally {

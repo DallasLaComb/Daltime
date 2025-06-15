@@ -36,7 +36,7 @@ async function updateShiftFillStatus(shiftId, pool) {
             shiftid, 
             COUNT(*) as assigned_count
           FROM public.shiftassignment 
-          WHERE status = 'assigned'
+          WHERE status IN ('assigned', 'available')
           GROUP BY shiftid
         ) sa_count ON s.shiftid = sa_count.shiftid
         WHERE s.shiftid = $1
@@ -187,7 +187,7 @@ exports.handler = async (event) => {
                 shiftid, 
                 COUNT(*) as assigned_count
               FROM public.shiftassignment 
-              WHERE status = 'assigned'
+              WHERE status IN ('assigned', 'available')
               GROUP BY shiftid
             ) sa_count ON s.shiftid = sa_count.shiftid
             WHERE s.managerid = $1

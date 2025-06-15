@@ -204,6 +204,69 @@ Resources:
             Method: GET
             ApiId: !Ref ApiGateway
 
+  EmployeePostShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/post-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        EmployeePostShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/shift
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  EmployeeClaimShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/claim-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        EmployeeClaimShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/shift/claim
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetAvailableShiftsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-available-shifts/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetAvailableShiftsApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/available-shifts
+            Method: GET
+            ApiId: !Ref ApiGateway
+
   PostShiftFunction:
     Type: AWS::Serverless::Function
     Properties:

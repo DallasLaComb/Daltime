@@ -89,7 +89,7 @@ exports.handler = async (event) => {
             shiftid, 
             COUNT(*) as assigned_count
           FROM public.shiftassignment 
-          WHERE status = 'assigned'
+          WHERE status IN ('assigned', 'available')
           GROUP BY shiftid
         ) assignments ON s.shiftid = assignments.shiftid
         WHERE s.managerid = $1 
@@ -117,6 +117,7 @@ exports.handler = async (event) => {
             sa.shiftassignmentid,
             sa.status,
             sa.assignedat,
+            sa.ownership_history,
             au.userid as employeeid,
             au.firstname,
             au.lastname,
@@ -124,7 +125,7 @@ exports.handler = async (event) => {
           FROM public.shiftassignment sa
           INNER JOIN public.appuser au ON sa.employeeid = au.userid
           WHERE sa.shiftid = ANY($1::uuid[])
-          AND sa.status = 'assigned'
+          AND sa.status IN ('assigned', 'available')
           ORDER BY sa.assignedat
         `;
 
@@ -146,6 +147,16 @@ exports.handler = async (event) => {
             email: assignment.email,
             status: assignment.status,
             assignedAt: assignment.assignedat,
+            // Add ownership history information
+            ownershipHistory: assignment.ownership_history || [],
+            isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
+            transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
+            originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+              ? assignment.ownership_history[0] 
+              : null,
+            currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
+              ? assignment.ownership_history[assignment.ownership_history.length - 1] 
+              : null,
           });
         });
       }

@@ -278,7 +278,7 @@ async function calculateActualWeeklyHours(employeeId, weekStartDate) {
       FROM public.shiftassignment sa
       INNER JOIN public.shift s ON sa.shiftid = s.shiftid
       WHERE sa.employeeid = $1 
-      AND sa.status = 'assigned'
+      AND sa.status IN ('assigned', 'available')
       AND s.date >= $2 
       AND s.date <= $3
     `;
