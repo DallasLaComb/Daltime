@@ -99,3 +99,44 @@ Resources:
             Path: /auth/login
             Method: POST
             ApiId: !Ref ApiGateway
+
+  LogoutUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/logout/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        LogoutApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/logout
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetCurrentUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/me/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        MeApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/me
+            Method: GET
+            ApiId: !Ref ApiGateway

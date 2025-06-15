@@ -17,21 +17,24 @@ exports.handler = async (event) => {
       return responses.badRequest('Email and password are required');
     }
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (authError) {
       console.error('Login error:', authError);
       return responses.unauthorized(authError.message);
     }
 
-    return responses.success({
-      user: authData.user,
-      session: authData.session
-    }, 'Login successful');
-    
+    return responses.success(
+      {
+        user: authData.user,
+        session: authData.session,
+      },
+      'Login successful'
+    );
   } catch (err) {
     console.error('Login error:', err);
     return responses.serverError(err.message);
