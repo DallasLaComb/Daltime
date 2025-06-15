@@ -246,6 +246,27 @@ Resources:
             Method: GET
             ApiId: !Ref ApiGateway
 
+  GetScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/get-schedule/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetScheduleApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/schedule
+            Method: GET
+            ApiId: !Ref ApiGateway
+
   # Scheduled Archive Function - Runs on 1st of every month
   ArchiveShiftsFunction:
     Type: AWS::Serverless::Function
