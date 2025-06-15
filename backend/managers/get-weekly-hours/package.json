@@ -1,0 +1,9 @@
+{
+  "name": "get-weekly-hours",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.21.0",
+    "dotenv": "^16.0.0"
+  }
+}

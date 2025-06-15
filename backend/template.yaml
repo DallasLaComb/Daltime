@@ -225,6 +225,27 @@ Resources:
             Method: POST
             ApiId: !Ref ApiGateway
 
+  GetWeeklyHoursFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/get-weekly-hours/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetWeeklyHoursApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/weekly-hours
+            Method: GET
+            ApiId: !Ref ApiGateway
+
   # Scheduled Archive Function - Runs on 1st of every month
   ArchiveShiftsFunction:
     Type: AWS::Serverless::Function

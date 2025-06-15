@@ -1,6 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 const { pool } = require('/opt/nodejs/poolLayer');
 const { responses } = require('/opt/nodejs/headersUtil');
+const {
+  canEmployeeWorkAdditionalHours,
+  updateEmployeeWeeklyHours,
+  calculateShiftHours,
+  getWeekStartDate,
+} = require('../get-weekly-hours/weeklyHoursHelper');
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -13,6 +19,17 @@ function calculateShiftStatus(assignedCount, requiredHeadcount) {
   if (assignedCount >= requiredHeadcount) return 'fully_staffed';
   if (assignedCount > 0) return 'partially_staffed';
   return 'unstaffed';
+}
+
+// Helper function to determine why a shift couldn't be filled
+function getUnfilledReason(availableEmployees, weeklyHourEligibleEmployees) {
+  if (availableEmployees === 0) {
+    return 'No employees available during shift time';
+  } else if (weeklyHourEligibleEmployees === 0) {
+    return 'All available employees would exceed 40-hour weekly limit';
+  } else {
+    return 'Insufficient available employees for required headcount';
+  }
 }
 
 exports.handler = async (event) => {
@@ -117,7 +134,7 @@ exports.handler = async (event) => {
             unfilledShifts: 0,
             fullyStaffedShifts: 0,
             partiallyStaffedShifts: 0,
-            unstaffedShifts: 0
+            unstaffedShifts: 0,
           },
         },
         'Scheduling completed - no shifts to process'
@@ -238,13 +255,43 @@ exports.handler = async (event) => {
         (av) => !conflictingEmployees.includes(av.employeeprofileid)
       );
 
-      // Randomly shuffle eligible employees
-      const shuffledEmployees = [...eligibleEmployees].sort(
+      // Filter out employees who would exceed weekly hour limits
+      const weeklyHourCheckedEmployees = [];
+      const weeklyHourViolations = [];
+
+      for (const employee of eligibleEmployees) {
+        const hourCheck = await canEmployeeWorkAdditionalHours(
+          employee.employeeprofileid,
+          shiftDate,
+          shiftStart,
+          shiftEnd
+        );
+
+        if (hourCheck.canWork) {
+          weeklyHourCheckedEmployees.push({
+            ...employee,
+            weeklyHourInfo: hourCheck,
+          });
+        } else {
+          weeklyHourViolations.push({
+            employeeId: employee.employeeprofileid,
+            reason: 'Would exceed 40-hour weekly limit',
+            currentHours: hourCheck.currentHours,
+            shiftHours: hourCheck.shiftHours,
+            totalAfterShift: hourCheck.totalAfterShift,
+          });
+        }
+      }
+
+      // Randomly shuffle employees who can work within hour limits
+      const shuffledEmployees = [...weeklyHourCheckedEmployees].sort(
         () => Math.random() - 0.5
       );
 
       // Assign employees to fill spots
       const assignedToThisShift = [];
+      const weeklyHourUpdates = [];
+
       for (
         let i = 0;
         i < Math.min(spotsToFill, shuffledEmployees.length);
@@ -276,6 +323,27 @@ exports.handler = async (event) => {
           );
           const assignment = result.rows[0];
 
+          // Update weekly hours for this employee
+          const shiftHours = calculateShiftHours(shiftStart, shiftEnd);
+          const weekStartDate = getWeekStartDate(shiftDate);
+
+          try {
+            const weeklyUpdate = await updateEmployeeWeeklyHours(
+              employee.employeeprofileid,
+              weekStartDate,
+              shiftHours
+            );
+            weeklyHourUpdates.push({
+              employeeId: employee.employeeprofileid,
+              weekStartDate: weekStartDate,
+              hoursAdded: shiftHours,
+              newTotalHours: weeklyUpdate.total_hours,
+            });
+          } catch (weeklyError) {
+            console.error('Error updating weekly hours:', weeklyError);
+            // Don't fail the assignment if weekly hour update fails
+          }
+
           assignedToThisShift.push({
             assignmentId: assignment.shiftassignmentid,
             employeeId: employee.employeeprofileid,
@@ -283,6 +351,7 @@ exports.handler = async (event) => {
             date: shiftDate,
             startTime: shiftStart,
             endTime: shiftEnd,
+            weeklyHoursAfter: employee.weeklyHourInfo.totalAfterShift,
           });
         } finally {
           assignmentInsertClient.release();
@@ -290,9 +359,13 @@ exports.handler = async (event) => {
       }
 
       // Calculate final assignment count and status for this shift
-      const finalAssignedCount = shift.current_assigned_count + assignedToThisShift.length;
-      const shiftStatus = calculateShiftStatus(finalAssignedCount, shift.requiredheadcount);
-      
+      const finalAssignedCount =
+        shift.current_assigned_count + assignedToThisShift.length;
+      const shiftStatus = calculateShiftStatus(
+        finalAssignedCount,
+        shift.requiredheadcount
+      );
+
       shiftStatusSummary.push({
         shiftId: shift.shiftid,
         requiredHeadcount: shift.requiredheadcount,
@@ -300,7 +373,7 @@ exports.handler = async (event) => {
         status: shiftStatus,
         date: shiftDate,
         startTime: shiftStart,
-        endTime: shiftEnd
+        endTime: shiftEnd,
       });
 
       // Track results
@@ -317,18 +390,27 @@ exports.handler = async (event) => {
             shift.current_assigned_count + assignedToThisShift.length,
           spotsStillNeeded: spotsToFill - assignedToThisShift.length,
           availableEmployees: eligibleEmployees.length,
-          reason:
-            eligibleEmployees.length === 0
-              ? 'No available employees'
-              : 'Not enough available employees',
+          weeklyHourEligibleEmployees: weeklyHourCheckedEmployees.length,
+          weeklyHourViolations: weeklyHourViolations.length,
+          reason: getUnfilledReason(
+            eligibleEmployees.length,
+            weeklyHourCheckedEmployees.length
+          ),
+          weeklyHourIssues: weeklyHourViolations,
         });
       }
     }
 
     // Calculate summary statistics
-    const fullyStaffedShifts = shiftStatusSummary.filter(s => s.status === 'fully_staffed').length;
-    const partiallyStaffedShifts = shiftStatusSummary.filter(s => s.status === 'partially_staffed').length;
-    const unstaffedShifts = shiftStatusSummary.filter(s => s.status === 'unstaffed').length;
+    const fullyStaffedShifts = shiftStatusSummary.filter(
+      (s) => s.status === 'fully_staffed'
+    ).length;
+    const partiallyStaffedShifts = shiftStatusSummary.filter(
+      (s) => s.status === 'partially_staffed'
+    ).length;
+    const unstaffedShifts = shiftStatusSummary.filter(
+      (s) => s.status === 'unstaffed'
+    ).length;
 
     const summary = {
       totalShifts: shifts.length,
@@ -337,7 +419,7 @@ exports.handler = async (event) => {
       partialOverlaps: partialOverlaps.length,
       fullyStaffedShifts,
       partiallyStaffedShifts,
-      unstaffedShifts
+      unstaffedShifts,
     };
 
     return responses.success(
