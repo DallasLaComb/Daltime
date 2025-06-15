@@ -183,6 +183,27 @@ Resources:
             Method: GET
             ApiId: !Ref ApiGateway
 
+  GetEmployeeScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-schedule/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetEmployeeScheduleApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/schedule
+            Method: GET
+            ApiId: !Ref ApiGateway
+
   PostShiftFunction:
     Type: AWS::Serverless::Function
     Properties:
