@@ -8,39 +8,11 @@ const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-// Helper function to update shift fill status
-async function updateShiftFillStatus(shiftIds) {
-  const statusUpdateClient = await pool.connect();
-  try {
-    const statusUpdateQuery = `
-      UPDATE public.shift 
-      SET fillstatus = CASE 
-        WHEN COALESCE(assignments.assigned_count, 0) >= shift.requiredheadcount THEN 'fully_staffed'
-        WHEN COALESCE(assignments.assigned_count, 0) > 0 THEN 'partially_staffed'
-        ELSE 'unstaffed'
-      END,
-      updatedat = NOW()
-      FROM (
-        SELECT 
-          s.shiftid,
-          COALESCE(COUNT(sa.shiftassignmentid), 0) as assigned_count
-        FROM public.shift s
-        LEFT JOIN public.shiftassignment sa ON s.shiftid = sa.shiftid AND sa.status = 'assigned'
-        WHERE s.shiftid = ANY($1::uuid[])
-        GROUP BY s.shiftid
-      ) assignments
-      WHERE shift.shiftid = assignments.shiftid
-      AND shift.shiftid = ANY($1::uuid[])
-      RETURNING shift.shiftid, shift.fillstatus;
-    `;
-
-    const result = await statusUpdateClient.query(statusUpdateQuery, [
-      shiftIds,
-    ]);
-    return result.rows;
-  } finally {
-    statusUpdateClient.release();
-  }
+// Helper function to get shift status summary (no database updates needed)
+function calculateShiftStatus(assignedCount, requiredHeadcount) {
+  if (assignedCount >= requiredHeadcount) return 'fully_staffed';
+  if (assignedCount > 0) return 'partially_staffed';
+  return 'unstaffed';
 }
 
 exports.handler = async (event) => {
@@ -119,10 +91,7 @@ exports.handler = async (event) => {
         ) current_assignments ON s.shiftid = current_assignments.shiftid
         WHERE s.managerid = $1 
         AND (
-          s.fillstatus IS NULL 
-          OR s.fillstatus = 'unstaffed' 
-          OR s.fillstatus = 'partially_staffed'
-          OR (current_assignments.assigned_count IS NULL OR current_assignments.assigned_count < s.requiredheadcount)
+          COALESCE(current_assignments.assigned_count, 0) < s.requiredheadcount
         )
         ORDER BY s.date, s.starttime
       `;
@@ -141,11 +110,14 @@ exports.handler = async (event) => {
           message: 'No shifts require additional scheduling',
           assignmentsMade: [],
           unfilledShifts: [],
+          shiftStatusSummary: [],
           summary: {
             totalShifts: 0,
             successfulAssignments: 0,
             unfilledShifts: 0,
-            statusUpdatesPerformed: 0,
+            fullyStaffedShifts: 0,
+            partiallyStaffedShifts: 0,
+            unstaffedShifts: 0
           },
         },
         'Scheduling completed - no shifts to process'
@@ -200,7 +172,7 @@ exports.handler = async (event) => {
     const assignmentsMade = [];
     const unfilledShifts = [];
     const partialOverlaps = [];
-    const shiftsToUpdateStatus = new Set(); // Track shifts that need status updates
+    const shiftStatusSummary = []; // Track final status of each shift
 
     for (const shift of shifts) {
       const spotsToFill =
@@ -317,10 +289,19 @@ exports.handler = async (event) => {
         }
       }
 
-      // Mark this shift for status update if assignments were made
-      if (assignedToThisShift.length > 0) {
-        shiftsToUpdateStatus.add(shift.shiftid);
-      }
+      // Calculate final assignment count and status for this shift
+      const finalAssignedCount = shift.current_assigned_count + assignedToThisShift.length;
+      const shiftStatus = calculateShiftStatus(finalAssignedCount, shift.requiredheadcount);
+      
+      shiftStatusSummary.push({
+        shiftId: shift.shiftid,
+        requiredHeadcount: shift.requiredheadcount,
+        assignedCount: finalAssignedCount,
+        status: shiftStatus,
+        date: shiftDate,
+        startTime: shiftStart,
+        endTime: shiftEnd
+      });
 
       // Track results
       assignmentsMade.push(...assignedToThisShift);
@@ -344,30 +325,19 @@ exports.handler = async (event) => {
       }
     }
 
-    // Update fillstatus for all shifts that had assignments made
-    let statusUpdateResults = [];
-    if (shiftsToUpdateStatus.size > 0) {
-      try {
-        const shiftIds = Array.from(shiftsToUpdateStatus);
-        statusUpdateResults = await updateShiftFillStatus(shiftIds);
-        console.log(
-          `Updated fillstatus for ${statusUpdateResults.length} shifts:`,
-          statusUpdateResults
-            .map((r) => `${r.shiftid}: ${r.fillstatus}`)
-            .join(', ')
-        );
-      } catch (statusError) {
-        console.error('Error updating shift fill status:', statusError);
-        // Don't fail the entire operation if status update fails
-      }
-    }
+    // Calculate summary statistics
+    const fullyStaffedShifts = shiftStatusSummary.filter(s => s.status === 'fully_staffed').length;
+    const partiallyStaffedShifts = shiftStatusSummary.filter(s => s.status === 'partially_staffed').length;
+    const unstaffedShifts = shiftStatusSummary.filter(s => s.status === 'unstaffed').length;
 
     const summary = {
       totalShifts: shifts.length,
       successfulAssignments: assignmentsMade.length,
       unfilledShifts: unfilledShifts.length,
       partialOverlaps: partialOverlaps.length,
-      statusUpdatesPerformed: statusUpdateResults.length,
+      fullyStaffedShifts,
+      partiallyStaffedShifts,
+      unstaffedShifts
     };
 
     return responses.success(
@@ -375,9 +345,9 @@ exports.handler = async (event) => {
         assignmentsMade,
         unfilledShifts,
         partialOverlaps,
-        statusUpdates: statusUpdateResults,
+        shiftStatusSummary,
         summary,
-        message: `Scheduling completed: ${assignmentsMade.length} assignments made, ${statusUpdateResults.length} shifts had their fill status updated`,
+        message: `Scheduling completed: ${assignmentsMade.length} assignments made across ${shifts.length} shifts. ${fullyStaffedShifts} fully staffed, ${partiallyStaffedShifts} partially staffed, ${unstaffedShifts} unstaffed.`,
       },
       'Scheduling completed successfully'
     );

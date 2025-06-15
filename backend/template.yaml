@@ -224,3 +224,37 @@ Resources:
             Path: /managers/schedule
             Method: POST
             ApiId: !Ref ApiGateway
+
+  # Scheduled Archive Function - Runs on 1st of every month
+  ArchiveShiftsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: scheduled/archive-shifts/
+      Handler: handler.handler
+      Timeout: 300 # 5 minutes for archiving operations
+      MemorySize: 256 # More memory for batch operations
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+      Events:
+        MonthlyArchiveSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: 'cron(0 2 1 * ? *)' # 2 AM UTC on 1st of every month
+            Description: 'Monthly archive of old shifts and assignments'
+            Input: |
+              {
+                "source": "scheduled-archive",
+                "detail-type": "Monthly Shift Archive"
+              }
+        # Add this temporary event for testing in Postman
+        TestArchiveApi:
+          Type: HttpApi
+          Properties:
+            Path: /test/archive
+            Method: POST
+            ApiId: !Ref ApiGateway
