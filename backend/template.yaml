@@ -140,3 +140,24 @@ Resources:
             Path: /auth/me
             Method: GET
             ApiId: !Ref ApiGateway
+
+  PostAvailabilityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/post-availability/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        PostAvailabilityApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/availability
+            Method: POST
+            ApiId: !Ref ApiGateway
