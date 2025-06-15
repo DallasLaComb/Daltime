@@ -2,6 +2,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { pool } = require('/opt/nodejs/poolLayer');
+const { responses } = require('/opt/nodejs/headersUtil');
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -31,10 +32,7 @@ exports.handler = async (event) => {
 
     if (authError) {
       console.error('Supabase Auth error:', authError);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ success: false, error: authError.message }),
-      };
+      return responses.badRequest(authError.message);
     }
 
     // Create app user in database
@@ -63,30 +61,9 @@ exports.handler = async (event) => {
       client.release();
     }
 
-    return {
-      statusCode: 201,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        success: true,
-        message: 'User registered successfully',
-        user: appUser,
-      }),
-    };
+    return responses.created(appUser, 'User registered successfully');
   } catch (err) {
     console.error('Registration error:', err);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: err.message,
-      }),
-    };
+    return responses.serverError(err.message);
   }
 };

@@ -1,7 +1,7 @@
 {
-  "name": "pool-layer",
+  "name": "shared-utilities-layer",
   "version": "1.0.0",
-  "description": "Database connection pool layer for Lambda functions",
+  "description": "Shared utilities layer for Lambda functions including database pool and headers",
   "dependencies": {
     "pg": "^8.16.0"
   }

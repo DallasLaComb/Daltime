@@ -30,11 +30,11 @@ Globals:
     MemorySize: 128
 
 Resources:
-  DatabasePoolLayer:
+  SharedUtilitiesLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: DatabasePoolLayer
-      Description: Database connection pool layer
+      LayerName: SharedUtilitiesLayer
+      Description: Shared utilities layer including database pool and headers
       ContentUri: layers/
       CompatibleRuntimes:
         - nodejs18.x
@@ -64,9 +64,10 @@ Resources:
       CodeUri: auth/register/
       Handler: handler.handler
       Layers:
-        - !Ref DatabasePoolLayer
+        - !Ref SharedUtilitiesLayer
       Environment:
         Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
           SUPABASE_DB_URL: !Ref SupabaseDbUrl
           SUPABASE_URL: !Ref SupabaseUrl
           SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
@@ -83,8 +84,11 @@ Resources:
     Properties:
       CodeUri: auth/login/
       Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
       Environment:
         Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
           SUPABASE_URL: !Ref SupabaseUrl
           SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
           SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
