@@ -22,7 +22,7 @@ exports.handler = async (event) => {
       return responses.unauthorized('Invalid token format');
     }
 
-    // Validate the token - this ensures the logout request is from a valid user
+    // Validate the token first
     const {
       data: { user },
       error: userError,
@@ -33,11 +33,11 @@ exports.handler = async (event) => {
       return responses.unauthorized('Invalid or expired token');
     }
 
-    // Simple validation-only logout
-    // The client is responsible for clearing the token from storage
+    // Basic logout - just validate the token
+    // Frontend will handle clearing cookies/local storage
     console.log('User logged out successfully:', user.email);
 
-    return responses.success(null, 'Logout successful');
+    return responses.success(null, 'Sign out successful');
   } catch (err) {
     console.error('Logout error:', err);
     return responses.serverError(err.message);
