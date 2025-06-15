@@ -161,3 +161,24 @@ Resources:
             Path: /employees/availability
             Method: POST
             ApiId: !Ref ApiGateway
+
+  PostShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/post-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        PostShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/shifts
+            Method: POST
+            ApiId: !Ref ApiGateway
