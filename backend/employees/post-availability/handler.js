@@ -66,85 +66,164 @@ exports.handler = async (event) => {
 
     // Parse and validate request body
     const body = JSON.parse(event.body || '{}');
-    const { date, starttime, endtime } = body;
 
-    // Validate required fields
-    if (!date || !starttime || !endtime) {
+    // Support both single record and bulk array insertion
+    const availabilityRecords = body.availability ? body.availability : [body];
+
+    // Validate that we have at least one record
+    if (!availabilityRecords || availabilityRecords.length === 0) {
       return responses.badRequest(
-        'Date, start time, and end time are required'
+        'At least one availability record is required'
       );
     }
 
-    // Validate date format (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(date)) {
-      return responses.badRequest('Date must be in YYYY-MM-DD format');
+    // Validation helpers
+    const validateAvailabilityRecord = (record, index = null) => {
+      const { date, starttime, endtime } = record;
+      const prefix = index !== null ? `Record ${index + 1}: ` : '';
+
+      // Validate required fields
+      if (!date || !starttime || !endtime) {
+        throw new Error(`${prefix}Date, start time, and end time are required`);
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        throw new Error(`${prefix}Date must be in YYYY-MM-DD format`);
+      }
+
+      // Validate time format (HH:MM:SS or HH:MM)
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+      const normalizeTime = (time) =>
+        time.includes(':') && !time.includes(':', time.lastIndexOf(':'))
+          ? `${time}:00`
+          : time;
+
+      const normalizedStart = normalizeTime(starttime);
+      const normalizedEnd = normalizeTime(endtime);
+
+      if (!timeRegex.test(normalizedStart) || !timeRegex.test(normalizedEnd)) {
+        throw new Error(`${prefix}Time must be in HH:MM or HH:MM:SS format`);
+      }
+
+      // Validate that start time is before end time
+      const startTimeDate = new Date(`2000-01-01T${normalizedStart}`);
+      const endTimeDate = new Date(`2000-01-01T${normalizedEnd}`);
+
+      if (startTimeDate >= endTimeDate) {
+        throw new Error(`${prefix}Start time must be before end time`);
+      }
+
+      // Validate that the date is not in the past (optional)
+      const today = new Date();
+      const availabilityDate = new Date(date);
+      today.setHours(0, 0, 0, 0);
+
+      if (availabilityDate < today) {
+        throw new Error(`${prefix}Cannot post availability for past dates`);
+      }
+
+      return {
+        date,
+        starttime: normalizedStart,
+        endtime: normalizedEnd,
+      };
+    };
+
+    // Validate all records first
+    let validatedRecords = [];
+    try {
+      validatedRecords = availabilityRecords.map((record, index) =>
+        validateAvailabilityRecord(
+          record,
+          availabilityRecords.length > 1 ? index : null
+        )
+      );
+    } catch (validationError) {
+      return responses.badRequest(validationError.message);
     }
 
-    // Validate time format (HH:MM:SS or HH:MM)
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-    if (!timeRegex.test(starttime) || !timeRegex.test(endtime)) {
-      return responses.badRequest('Time must be in HH:MM or HH:MM:SS format');
+    // Check for duplicate dates in the request
+    const requestDates = validatedRecords.map((r) => r.date);
+    const duplicateDates = requestDates.filter(
+      (date, index) => requestDates.indexOf(date) !== index
+    );
+    if (duplicateDates.length > 0) {
+      return responses.badRequest(
+        `Duplicate dates found in request: ${[...new Set(duplicateDates)].join(
+          ', '
+        )}`
+      );
     }
 
-    // Validate that start time is before end time
-    const startTimeDate = new Date(`2000-01-01T${starttime}`);
-    const endTimeDate = new Date(`2000-01-01T${endtime}`);
-
-    if (startTimeDate >= endTimeDate) {
-      return responses.badRequest('Start time must be before end time');
-    }
-
-    // Validate that the date is not in the past (optional - you can remove this if needed)
-    const today = new Date();
-    const availabilityDate = new Date(date);
-    today.setHours(0, 0, 0, 0);
-
-    if (availabilityDate < today) {
-      return responses.badRequest('Cannot post availability for past dates');
-    }
-
-    // Insert availability record
+    // Insert availability records
     const insertClient = await pool.connect();
-    let newAvailability;
+    let results = [];
 
     try {
-      // Check if availability already exists for this employee on this date
+      // Check for existing availability records for these dates
+      const dateList = validatedRecords.map((r) => r.date);
       const existingQuery = `
-        SELECT availabilityid 
+        SELECT date 
         FROM public.availability 
-        WHERE employeeprofileid = $1 AND date = $2
+        WHERE employeeprofileid = $1 AND date = ANY($2::date[])
       `;
 
       const existing = await insertClient.query(existingQuery, [
         employeeUserId,
-        date,
+        dateList,
       ]);
 
       if (existing.rows.length > 0) {
+        const existingDates = existing.rows.map((row) => row.date);
         return responses.badRequest(
-          'Availability already exists for this date. Please update or delete the existing availability first.'
+          `Availability already exists for the following dates: ${existingDates.join(
+            ', '
+          )}. Please update or delete existing availability first.`
         );
       }
 
-      // Insert new availability
-      const insertQuery = `
-        INSERT INTO public.availability (employeeprofileid, date, starttime, endtime, createdat)
-        VALUES ($1, $2, $3, $4, NOW())
-        RETURNING *;
-      `;
+      // Begin transaction for bulk insert
+      await insertClient.query('BEGIN');
 
-      const values = [employeeUserId, date, starttime, endtime];
+      // Insert all records
+      for (const record of validatedRecords) {
+        const insertQuery = `
+          INSERT INTO public.availability (employeeprofileid, date, starttime, endtime, createdat)
+          VALUES ($1, $2, $3, $4, NOW())
+          RETURNING *;
+        `;
 
-      const result = await insertClient.query(insertQuery, values);
-      newAvailability = result.rows[0];
+        const values = [
+          employeeUserId,
+          record.date,
+          record.starttime,
+          record.endtime,
+        ];
+        const result = await insertClient.query(insertQuery, values);
+        results.push(result.rows[0]);
+      }
+
+      // Commit transaction
+      await insertClient.query('COMMIT');
+    } catch (error) {
+      // Rollback transaction on error
+      await insertClient.query('ROLLBACK');
+      throw error;
     } finally {
       insertClient.release();
     }
 
+    // Return appropriate response based on whether it was bulk or single insert
+    const message =
+      results.length === 1
+        ? 'Availability posted successfully'
+        : `${results.length} availability records posted successfully`;
+
     return responses.created(
-      newAvailability,
-      'Availability posted successfully'
+      results.length === 1 ? results[0] : results,
+      message
     );
   } catch (err) {
     console.error('Post availability error:', err);
