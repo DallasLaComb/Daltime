@@ -40,26 +40,26 @@ exports.handler = async (event) => {
       return responses.unauthorized('Invalid or expired token');
     }
 
-    // Get employee profile ID from database
+    // Verify user is an employee
     const client = await pool.connect();
-    let employeeProfileId;
+    let employeeUserId;
 
     try {
       const userQuery = `
-        SELECT ep.employeeprofileid 
-        FROM public.employeeprofile ep
-        WHERE ep.userid = $1
+        SELECT au.userid 
+        FROM public.appuser au
+        WHERE au.userid = $1 AND au.role = 'employee'
       `;
 
       const userResult = await client.query(userQuery, [user.id]);
 
       if (userResult.rows.length === 0) {
         return responses.notFound(
-          'Employee profile not found. Please contact your manager.'
+          'User not found or user is not an employee. Please contact your manager.'
         );
       }
 
-      employeeProfileId = userResult.rows[0].employeeprofileid;
+      employeeUserId = userResult.rows[0].userid;
     } finally {
       client.release();
     }
@@ -117,7 +117,7 @@ exports.handler = async (event) => {
       `;
 
       const existing = await insertClient.query(existingQuery, [
-        employeeProfileId,
+        employeeUserId,
         date,
       ]);
 
@@ -134,7 +134,7 @@ exports.handler = async (event) => {
         RETURNING *;
       `;
 
-      const values = [employeeProfileId, date, starttime, endtime];
+      const values = [employeeUserId, date, starttime, endtime];
 
       const result = await insertClient.query(insertQuery, values);
       newAvailability = result.rows[0];
