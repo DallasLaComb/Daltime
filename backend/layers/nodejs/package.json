@@ -1,0 +1,8 @@
+{
+  "name": "pool-layer",
+  "version": "1.0.0",
+  "description": "Database connection pool layer for Lambda functions",
+  "dependencies": {
+    "pg": "^8.16.0"
+  }
+}

@@ -1,21 +1,13 @@
 // lambdas/auth/register.js
 
 const { createClient } = require('@supabase/supabase-js');
-const { Pool } = require('pg');
+const { pool } = require('/opt/nodejs/poolLayer');
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
-const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL;
-const isProd = process.env.ISPROD === 'true';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-
-// Create the pool once for Lambda reuse
-const pool = new Pool({
-  connectionString: SUPABASE_DB_URL,
-  ssl: isProd ? { rejectUnauthorized: true } : { rejectUnauthorized: false },
-});
 
 exports.handler = async (event) => {
   try {
