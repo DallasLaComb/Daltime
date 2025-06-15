@@ -61,8 +61,8 @@ Resources:
   RegisterUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: auth/register/handler.handler
+      CodeUri: auth/register/
+      Handler: handler.handler
       Layers:
         - !Ref DatabasePoolLayer
       Environment:
@@ -81,8 +81,8 @@ Resources:
   LoginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: auth/login/handler.handler
+      CodeUri: auth/login/
+      Handler: handler.handler
       Environment:
         Variables:
           SUPABASE_URL: !Ref SupabaseUrl
