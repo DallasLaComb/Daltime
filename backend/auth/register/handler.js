@@ -1,13 +1,21 @@
 // lambdas/auth/register.js
 
 const { createClient } = require('@supabase/supabase-js');
-const { createAppUser } = require('../../shared/db/createAppUser'); 
+const { Pool } = require('pg');
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL;
+const isProd = process.env.ISPROD === 'true';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+// Create the pool once for Lambda reuse
+const pool = new Pool({
+  connectionString: SUPABASE_DB_URL,
+  ssl: isProd ? { rejectUnauthorized: true } : { rejectUnauthorized: false },
+});
 
 exports.handler = async (event) => {
   try {
@@ -37,15 +45,31 @@ exports.handler = async (event) => {
       };
     }
 
-    const appUser = await createAppUser({
-      userId: authData.user.id,
-      email,
+    // Create app user in database
+    const client = await pool.connect();
+    const insertQuery = `
+      INSERT INTO public.appuser (userid, companyid, firstname, lastname, phonenumber, email, role)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *;
+    `;
+
+    const values = [
+      authData.user.id,
+      companyId,
       firstName,
       lastName,
-      phoneNumber,
+      parseInt(phoneNumber),
+      email,
       role,
-      companyId,
-    });
+    ];
+
+    let appUser;
+    try {
+      const result = await client.query(insertQuery, values);
+      appUser = result.rows[0];
+    } finally {
+      client.release();
+    }
 
     return {
       statusCode: 201,

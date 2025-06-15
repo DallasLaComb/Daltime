@@ -2,6 +2,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
+  isProd:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Set to true for production environment, false for development'
   SupabaseUrl:
     Type: String
     NoEcho: true
@@ -55,6 +62,7 @@ Resources:
       Handler: auth/register/handler.handler
       Environment:
         Variables:
+          isProd: !Ref isProd
           SUPABASE_DB_URL: !Ref SupabaseDbUrl
           SUPABASE_URL: !Ref SupabaseUrl
           SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
@@ -81,22 +89,5 @@ Resources:
           Type: HttpApi
           Properties:
             Path: /auth/login
-            Method: POST
-            ApiId: !Ref ApiGateway
-
-  PostShiftFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: .
-      Handler: shift-api/postShift/handler.handler
-      Environment:
-        Variables:
-          SUPABASE_URL: !Ref SupabaseUrl
-          SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
-      Events:
-        PostShiftApi:
-          Type: HttpApi
-          Properties:
-            Path: /shift/post
             Method: POST
             ApiId: !Ref ApiGateway

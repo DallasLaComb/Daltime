@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "dev": "dotenv -- sam local start-api --parameter-overrides \"ParameterKey=SupabaseUrl,ParameterValue=$SUPABASE_URL\" \"ParameterKey=SupabaseAnonKey,ParameterValue=$SUPABASE_ANON_KEY\" \"ParameterKey=SupabaseServiceRole,ParameterValue=$SUPABASE_SERVICE_ROLE\" \"ParameterKey=SupabaseDbUrl,ParameterValue=$SUPABASE_DB_URL\" \"ParameterKey=CorsOrigin,ParameterValue=*\""
+    "dev": "dotenv -- sam local start-api --parameter-overrides \"ParameterKey=isProd,ParameterValue=false\" \"ParameterKey=SupabaseUrl,ParameterValue=$SUPABASE_URL\" \"ParameterKey=SupabaseAnonKey,ParameterValue=$SUPABASE_ANON_KEY\" \"ParameterKey=SupabaseServiceRole,ParameterValue=$SUPABASE_SERVICE_ROLE\" \"ParameterKey=SupabaseDbUrl,ParameterValue=$SUPABASE_DB_URL\" \"ParameterKey=CorsOrigin,ParameterValue=*\""
   },
   "devDependencies": {
     "dotenv-cli": "^8.0.0",
