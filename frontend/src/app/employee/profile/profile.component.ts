@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../auth/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-employee-profile',
@@ -11,7 +12,10 @@ import { AuthService } from '../../auth/auth.service';
   imports: [CommonModule],
 })
 export class EmployeeProfileComponent implements OnInit {
-  managers: any[] = [];
+  managers: {
+    currentManagers: any[];
+    availableManagers: any[];
+  } | null = null;
   loading: boolean = false;
   error: string | null = null;
 
@@ -25,18 +29,24 @@ export class EmployeeProfileComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    console.log('Using token:', this.authService.getToken());
+    const token = this.authService.getToken();
+    console.log('Retrieved Token:', token);
+
+    const authorizationHeader = `Bearer ${token}`;
+    console.log('Authorization Header:', authorizationHeader);
 
     this.http
-      .get('/employees/get-managers', {
-        headers: { Authorization: `Bearer ${this.authService.getToken()}` },
+      .get(`${environment.apiBaseUrl}/employees/managers`, {
+        headers: { Authorization: authorizationHeader },
       })
       .subscribe({
         next: (response: any) => {
-          this.managers = response.availableManagers;
+          console.log('Managers Response:', response);
+          this.managers = response.data;
           this.loading = false;
         },
         error: (err) => {
+          console.error('Error Fetching Managers:', err);
           this.error = 'Failed to fetch managers. Please try again later.';
           this.loading = false;
         },
@@ -44,16 +54,14 @@ export class EmployeeProfileComponent implements OnInit {
   }
 
   connectToManager(managerId: string): void {
-    this.http
-      .post('/employees/connect-to-manager', { managerId })
-      .subscribe({
-        next: () => {
-          alert('Successfully connected to manager!');
-          this.fetchManagers();
-        },
-        error: () => {
-          alert('Failed to connect to manager. Please try again later.');
-        },
-      });
+    this.http.post('/employees/connect-to-manager', { managerId }).subscribe({
+      next: () => {
+        alert('Successfully connected to manager!');
+        this.fetchManagers();
+      },
+      error: () => {
+        alert('Failed to connect to manager. Please try again later.');
+      },
+    });
   }
 }

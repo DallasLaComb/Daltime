@@ -6,7 +6,12 @@ import { EmployeeRoutingModule } from './employee-routing.module';
 import { EmployeeProfileComponent } from './profile/profile.component';
 
 @NgModule({
-  imports: [CommonModule, EmployeeRoutingModule, EmployeeDashboardComponent, EmployeeProfileComponent],
+  imports: [
+    CommonModule,
+    EmployeeRoutingModule,
+    EmployeeDashboardComponent,
+    EmployeeProfileComponent,
+  ],
   exports: [EmployeeProfileComponent],
 })
 export class EmployeeModule {}

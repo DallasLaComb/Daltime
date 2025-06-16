@@ -8,6 +8,12 @@ interface LoginResponse {
   refresh_token: string;
   expires_in: number;
   user: any;
+  session: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    expires_at: number;
+  };
   data: {
     user: {
       role: string;
@@ -48,14 +54,35 @@ export class AuthService {
   // 🔹 Get full auth data from localStorage
   getAuthData(): LoginResponse | null {
     const raw = localStorage.getItem('authData');
-    console.log('Retrieved auth data:', raw);
+    console.log('Raw authData from localStorage:', raw);
     return raw ? JSON.parse(raw) : null;
   }
 
   // 🔹 Get token from stored auth data
   getToken(): string | null {
-    const data = this.getAuthData();
-    return data?.token || null;
+    const raw = localStorage.getItem('authData');
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw);
+      const token = parsed?.data?.session?.access_token;
+      const expiresAt = parsed?.data?.session?.expires_at;
+
+      if (!token) {
+        console.error('Token is missing');
+        return null;
+      }
+
+      if (expiresAt && Date.now() / 1000 > expiresAt) {
+        console.error('Token has expired');
+        return null;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Error parsing authData:', error);
+      return null;
+    }
   }
 
   // 🔹 Logout (clear all auth data)
