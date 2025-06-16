@@ -6,9 +6,5 @@ import { provideHttpClient } from '@angular/common/http';
 import { NavbarComponent } from './app/shared/navbar/navbar.component';
 
 bootstrapApplication(AppComponent, {
-  providers: [
-    provideRouter(routes),
-    provideHttpClient(),
-    NavbarComponent,
-  ],
+  providers: [provideRouter(routes), provideHttpClient(), NavbarComponent],
 }).catch((err) => console.error(err));

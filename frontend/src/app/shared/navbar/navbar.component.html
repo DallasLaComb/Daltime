@@ -1,10 +1,22 @@
 <nav class="navbar" *ngIf="role">
   <ul>
-    <li *ngIf="role === 'employee'"><a (click)="navigateTo('/employee/dashboard')">Dashboard</a></li>
-    <li *ngIf="role === 'employee'"><a (click)="navigateTo('/employee/profile')">Profile</a></li>
-    <li *ngIf="role === 'employee'"><a (click)="navigateTo('/employee/availability')">Availability</a></li>
-    <li *ngIf="role === 'employee'"><a (click)="navigateTo('/employee/take-shifts')">Take Shifts</a></li>
-    <li *ngIf="role === 'manager'"><a (click)="navigateTo('/manager/dashboard')">Manager Dashboard</a></li>
-    <li *ngIf="role === 'admin'"><a (click)="navigateTo('/admin/dashboard')">Admin Dashboard</a></li>
+    <li *ngIf="role === 'employee'">
+      <a (click)="navigateTo('/employee/dashboard')">Dashboard</a>
+    </li>
+    <li *ngIf="role === 'employee'">
+      <a (click)="navigateTo('/employee/profile')">Profile</a>
+    </li>
+    <li *ngIf="role === 'employee'">
+      <a (click)="navigateTo('/employee/availability')">Availability</a>
+    </li>
+    <li *ngIf="role === 'employee'">
+      <a (click)="navigateTo('/employee/take-shifts')">Take Shifts</a>
+    </li>
+    <li *ngIf="role === 'manager'">
+      <a (click)="navigateTo('/manager/dashboard')">Manager Dashboard</a>
+    </li>
+    <li *ngIf="role === 'admin'">
+      <a (click)="navigateTo('/admin/dashboard')">Admin Dashboard</a>
+    </li>
   </ul>
 </nav>
