@@ -267,6 +267,48 @@ Resources:
             Method: GET
             ApiId: !Ref ApiGateway
 
+  GetManagersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-managers/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetManagersApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/managers
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  ConnectToManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/connect-to-manager/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        ConnectToManagerApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/managers/connect
+            Method: POST
+            ApiId: !Ref ApiGateway
+
   PostShiftFunction:
     Type: AWS::Serverless::Function
     Properties:
