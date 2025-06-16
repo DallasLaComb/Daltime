@@ -8,6 +8,13 @@ interface LoginResponse {
   refresh_token: string;
   expires_in: number;
   user: any;
+  data: {
+    user: {
+      role: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,12 +41,14 @@ export class AuthService {
 
   // 🔹 Save full auth data to localStorage
   saveAuthData(auth: any): void {
+    console.log('Saving auth data:', auth);
     localStorage.setItem('authData', JSON.stringify(auth));
   }
 
   // 🔹 Get full auth data from localStorage
   getAuthData(): LoginResponse | null {
     const raw = localStorage.getItem('authData');
+    console.log('Retrieved auth data:', raw);
     return raw ? JSON.parse(raw) : null;
   }
 

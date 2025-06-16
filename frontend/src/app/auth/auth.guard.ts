@@ -28,15 +28,17 @@ export class AuthGuard implements CanActivate, CanLoad {
 
   private checkAccess(url: string): boolean {
     const authData = this.auth.getAuthData();
+    console.log('AuthGuard checkAccess, authData:', authData);
+
     if (!authData) {
+      console.warn('No auth data found, redirecting to login.');
       this.router.navigate(['/auth/login']);
       return false;
     }
-    const role = (
-      authData.user?.role ||
-      authData.user?.[0]?.role ||
-      ''
-    ).toLowerCase();
+
+    const role = authData?.data?.user?.role?.toLowerCase();
+    console.log('AuthGuard checkAccess, role:', role, 'url:', url);
+
     if (
       (role === 'employee' && url.startsWith('/employee')) ||
       (role === 'manager' && url.startsWith('/manager')) ||
@@ -44,7 +46,8 @@ export class AuthGuard implements CanActivate, CanLoad {
     ) {
       return true;
     }
-    // If not allowed, redirect to their dashboard
+
+    console.warn('Role mismatch or unauthorized access, redirecting to dashboard.');
     if (role === 'employee') {
       this.router.navigate(['/employee/dashboard']);
     } else if (role === 'manager') {

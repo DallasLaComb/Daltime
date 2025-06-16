@@ -39,7 +39,10 @@ const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: 'auth/login',
+    loadComponent: () =>
+      import('../dashboard-redirect.component').then(
+        (m) => m.DashboardRedirectComponent
+      ),
     pathMatch: 'full',
   },
   {

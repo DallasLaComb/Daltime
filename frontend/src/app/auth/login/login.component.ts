@@ -37,30 +37,40 @@ export class LoginComponent {
       next: (res) => {
         console.log('Login response:', res);
         this.auth.saveAuthData(res);
-        // Determine role and redirect
-        const role = res.user?.role || res.user?.[0]?.role;
+
+        const role = res?.data?.user?.role;
         console.log('User role:', role);
-        // Defensive: check for string and trim/lowercase
-        if (typeof role === 'string') {
+
+        if (typeof role === 'string' && role.trim()) {
           const normalizedRole = role.trim().toLowerCase();
-          let target = '/';
-          if (normalizedRole === 'employee') {
-            target = '/employee/dashboard';
-          } else if (normalizedRole === 'manager') {
-            target = '/manager/dashboard';
-          } else if (normalizedRole === 'admin') {
-            target = '/admin/dashboard';
-          }
+          const target = `/${normalizedRole}/dashboard`;
           console.log('Attempting to navigate to:', target);
-          this.router.navigate([target]).then(
-            (success) => console.log('Navigation success:', success),
-            (err) => console.error('Navigation error:', err)
+
+          this.router.navigateByUrl(target).then(
+            (success) => {
+              console.log('Navigation success:', success);
+              this.isLoading = false;
+            },
+            (err) => {
+              console.error('Navigation error:', err);
+              this.error = `Navigation failed: ${err.message}`;
+              this.isLoading = false;
+            }
           );
         } else {
-          console.log('Role not a string, navigating to root.');
-          this.router.navigate(['/']);
+          console.warn('Role is undefined or invalid, navigating to root.');
+          this.router.navigate(['/']).then(
+            (success) => {
+              console.log('Navigation to root success:', success);
+              this.isLoading = false;
+            },
+            (err) => {
+              console.error('Navigation to root error:', err);
+              this.error = `Navigation failed: ${err.message}`;
+              this.isLoading = false;
+            }
+          );
         }
-        this.isLoading = false;
       },
       error: (err) => {
         this.isLoading = false;

@@ -14,15 +14,24 @@ export class DashboardRedirectComponent {
   constructor() {
     const authData = this.auth.getAuthData();
     console.log('DashboardRedirectComponent loaded, authData:', authData);
-    const role = authData?.user?.role;
-    if (role === 'employee') {
-      this.router.navigate(['/employee/dashboard']);
-    } else if (role === 'manager') {
-      this.router.navigate(['/manager/dashboard']);
-    } else if (role === 'admin') {
-      this.router.navigate(['/admin/dashboard']);
+
+    const role = authData?.data?.user?.role;
+    if (typeof role === 'string' && role.trim()) {
+      const normalizedRole = role.trim().toLowerCase();
+      const target = `/${normalizedRole}/dashboard`;
+      console.log('Redirecting to:', target);
+
+      this.router.navigateByUrl(target).catch((err) => {
+        console.error('Navigation error:', err);
+        this.router.navigate(['/auth/login']).catch((loginErr) => {
+          console.error('Fallback navigation error:', loginErr);
+        });
+      });
     } else {
-      this.router.navigate(['/auth/login']);
+      console.warn('Role is undefined or invalid, redirecting to login.');
+      this.router.navigate(['/auth/login']).catch((err) => {
+        console.error('Fallback navigation error:', err);
+      });
     }
   }
 }
