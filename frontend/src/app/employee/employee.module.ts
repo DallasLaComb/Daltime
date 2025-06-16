@@ -7,5 +7,6 @@ import { EmployeeRoutingModule } from './employee-routing.module';
 @NgModule({
   declarations: [],
   imports: [CommonModule, EmployeeRoutingModule, EmployeeDashboardComponent],
+  exports: [],
 })
 export class EmployeeModule {}

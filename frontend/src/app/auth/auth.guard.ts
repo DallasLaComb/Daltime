@@ -47,7 +47,9 @@ export class AuthGuard implements CanActivate, CanLoad {
       return true;
     }
 
-    console.warn('Role mismatch or unauthorized access, redirecting to dashboard.');
+    console.warn(
+      'Role mismatch or unauthorized access, redirecting to dashboard.'
+    );
     if (role === 'employee') {
       this.router.navigate(['/employee/dashboard']);
     } else if (role === 'manager') {

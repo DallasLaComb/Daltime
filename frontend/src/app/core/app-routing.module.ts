@@ -4,7 +4,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from '../auth/auth.guard';
 import { DashboardRedirectComponent } from '../dashboard-redirect.component';
 
-const routes: Routes = [
+export const routes: Routes = [
   {
     path: 'auth',
     loadChildren: () => import('../auth/auth.module').then((m) => m.AuthModule),
