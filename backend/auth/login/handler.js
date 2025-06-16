@@ -28,9 +28,21 @@ exports.handler = async (event) => {
       return responses.unauthorized(authError.message);
     }
 
+    // Query the database for the user's role
+    const { data: userData, error: userError } = await supabase
+      .from('appuser') // Updated table name
+      .select('role')
+      .eq('userid', authData.user.id) // Updated column name to match UUID
+      .single();
+
+    if (userError) {
+      console.error('Error fetching user role:', userError);
+      return responses.serverError('Failed to fetch user role');
+    }
+
     return responses.success(
       {
-        user: authData.user,
+        user: { ...authData.user, role: userData.role },
         session: authData.session,
       },
       'Login successful'
