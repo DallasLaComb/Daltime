@@ -1,22 +1,282 @@
-<div class="profile">
-  <h1>Managers</h1>
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div class="px-6 py-4 bg-blue-600 text-white">
+        <h1 class="text-2xl font-bold">Manager Connections</h1>
+        <p class="text-blue-100">Manage your connections with supervisors</p>
+      </div>
 
-  <div *ngIf="loading">Loading managers...</div>
-  <div *ngIf="error">{{ error }}</div>
+      <!-- Loading State -->
+      <div *ngIf="loading" class="p-6">
+        <div class="flex items-center justify-center">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
+          ></div>
+          <span class="ml-3 text-gray-600">Loading managers...</span>
+        </div>
+      </div>
 
-  <div *ngIf="managers">
-    <h2>Current Managers</h2>
-    <ul>
-      <li *ngFor="let manager of managers.currentManagers">
-        {{ manager.firstName }} {{ manager.lastName }} - {{ manager.email }}
-      </li>
-    </ul>
+      <!-- Error State -->
+      <div *ngIf="error && !loading" class="p-6">
+        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg
+                class="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Error</h3>
+              <p class="text-sm text-red-700 mt-1">{{ error }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <h2>Available Managers</h2>
-    <ul>
-      <li *ngFor="let manager of managers.availableManagers">
-        {{ manager.firstName }} {{ manager.lastName }} - {{ manager.email }}
-      </li>
-    </ul>
+      <!-- Success State -->
+      <div *ngIf="successMessage && !loading" class="p-6">
+        <div class="bg-green-50 border border-green-200 rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg
+                class="h-5 w-5 text-green-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-green-800">Success</h3>
+              <p class="text-sm text-green-700 mt-1">{{ successMessage }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Managers Content -->
+      <div *ngIf="managers && !loading" class="p-6">
+        <!-- Current Managers Section -->
+        <div class="mb-8">
+          <h2
+            class="text-xl font-semibold text-gray-900 mb-4 flex items-center"
+          >
+            <svg
+              class="w-5 h-5 mr-2 text-green-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Current Managers ({{ managers.currentManagers.length || 0 }})
+          </h2>
+
+          <div
+            *ngIf="
+              !managers.currentManagers || managers.currentManagers.length === 0
+            "
+            class="bg-gray-50 rounded-lg p-6 text-center"
+          >
+            <svg
+              class="mx-auto h-12 w-12 text-gray-400"
+              stroke="currentColor"
+              fill="none"
+              viewBox="0 0 48 48"
+            >
+              <path
+                d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A9.971 9.971 0 0124 24c4.004 0 7.625 2.371 9.287 6m-9.287-6H16.287a9.971 9.971 0 00-1.574 2.286"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">
+              No current managers
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">
+              You are not currently connected to any managers.
+            </p>
+          </div>
+
+          <div
+            *ngIf="
+              managers.currentManagers && managers.currentManagers.length > 0
+            "
+            class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          >
+            <div
+              *ngFor="let manager of managers.currentManagers"
+              class="bg-green-50 border border-green-200 rounded-lg p-4"
+            >
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div
+                    class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center"
+                  >
+                    <span class="text-white font-medium text-sm">
+                      {{ (manager?.first_name || manager?.firstName || 'M')[0]
+                      }}{{ (manager?.last_name || manager?.lastName || '')[0] }}
+                    </span>
+                  </div>
+                </div>
+                <div class="ml-3 flex-1">
+                  <h3 class="text-sm font-medium text-gray-900">
+                    {{ manager?.first_name || manager?.firstName }}
+                    {{ manager?.last_name || manager?.lastName }}
+                  </h3>
+                  <p class="text-sm text-gray-500">{{ manager?.email }}</p>
+                  <span
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1"
+                  >
+                    Connected
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Available Managers Section -->
+        <div>
+          <h2
+            class="text-xl font-semibold text-gray-900 mb-4 flex items-center"
+          >
+            <svg
+              class="w-5 h-5 mr-2 text-blue-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"
+              />
+            </svg>
+            Available Managers ({{ managers.availableManagers.length || 0 }})
+          </h2>
+
+          <div
+            *ngIf="
+              !managers.availableManagers ||
+              managers.availableManagers.length === 0
+            "
+            class="bg-gray-50 rounded-lg p-6 text-center"
+          >
+            <svg
+              class="mx-auto h-12 w-12 text-gray-400"
+              stroke="currentColor"
+              fill="none"
+              viewBox="0 0 48 48"
+            >
+              <path
+                d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A9.971 9.971 0 0124 24c4.004 0 7.625 2.371 9.287 6m-9.287-6H16.287a9.971 9.971 0 00-1.574 2.286"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">
+              No available managers
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">
+              There are no managers available to connect with at this time.
+            </p>
+          </div>
+
+          <div
+            *ngIf="
+              managers.availableManagers &&
+              managers.availableManagers.length > 0
+            "
+            class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+          >
+            <div
+              *ngFor="let manager of managers.availableManagers"
+              class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div class="flex flex-col space-y-3">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <div
+                      class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"
+                    >
+                      <span class="text-white font-medium text-base">
+                        {{
+                          (manager?.firstName || 'M')[0]
+                        }}{{
+                          (manager?.lastName || '')[0]
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h3 class="text-base font-medium text-gray-900">
+                      {{ manager?.firstName }}
+                      {{ manager?.lastName }}
+                    </h3>
+                    <p class="text-sm text-gray-500 break-all">
+                      {{ manager?.email }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex justify-end">
+                  <button
+                    (click)="connectToManager(manager?.managerId)"
+                    [disabled]="connecting"
+                    [class.opacity-50]="connecting"
+                    [class.cursor-not-allowed]="connecting"
+                    class="inline-flex items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:hover:bg-white"
+                  >
+                    <svg
+                      *ngIf="!connecting"
+                      class="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    <svg
+                      *ngIf="connecting"
+                      class="animate-spin w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    {{ connecting ? 'Connecting...' : 'Connect' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
