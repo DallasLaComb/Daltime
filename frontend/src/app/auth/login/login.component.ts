@@ -43,7 +43,10 @@ export class LoginComponent {
 
         if (typeof role === 'string' && role.trim()) {
           const normalizedRole = role.trim().toLowerCase();
-          const target = `/${normalizedRole}/dashboard`;
+          const target =
+            normalizedRole === 'employee'
+              ? '/employee/profile'
+              : `/${normalizedRole}/dashboard`;
           console.log('Attempting to navigate to:', target);
 
           this.router.navigateByUrl(target).then(

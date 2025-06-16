@@ -14,11 +14,13 @@ import { NavbarComponent } from './shared/navbar/navbar.component';
 })
 export class AppComponent {
   isAuthRoute: boolean = false;
+  loading: boolean = true;
 
   constructor(private router: Router) {
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.isAuthRoute = event.url.startsWith('/auth');
+        this.loading = false;
       }
     });
   }

@@ -13,6 +13,11 @@ export const routes: Routes = [
     component: EmployeeDashboardComponent,
   },
   {
+    path: 'profile',
+    loadComponent: () =>
+      import('./profile/profile.component').then((m) => m.EmployeeProfileComponent),
+  },
+  {
     path: '',
     redirectTo: 'home',
     pathMatch: 'full',

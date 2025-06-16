@@ -7,6 +7,7 @@ import { AuthService } from '../../auth/auth.service';
   selector: 'app-navbar',
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.scss'],
+  standalone: true,
   imports: [CommonModule],
 })
 export class NavbarComponent {

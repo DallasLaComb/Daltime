@@ -1,0 +1,20 @@
+<div class="profile">
+  <h1>Managers</h1>
+
+  <div *ngIf="loading">Loading...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <ul *ngIf="!loading && !error">
+    <li *ngFor="let manager of managers">
+      <div class="manager">
+        <h2>{{ manager.firstName }} {{ manager.lastName }}</h2>
+        <p>Email: {{ manager.email }}</p>
+        <p>Phone: {{ manager.phoneNumber }}</p>
+        <button *ngIf="!manager.isCurrentManager" (click)="connectToManager(manager.managerId)">
+          Connect
+        </button>
+        <span *ngIf="manager.isCurrentManager" class="connected">Connected</span>
+      </div>
+    </li>
+  </ul>
+</div>

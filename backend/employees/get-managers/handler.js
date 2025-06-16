@@ -35,6 +35,10 @@ exports.handler = async (event) => {
       error: userError,
     } = await supabase.auth.getUser(token);
 
+    console.log('Authorization Header:', authHeader);
+    console.log('Extracted Token:', token);
+    console.log('Supabase User Validation Result:', user, userError);
+
     if (userError || !user) {
       console.error('User validation error:', userError);
       return responses.unauthorized('Invalid or expired token');
