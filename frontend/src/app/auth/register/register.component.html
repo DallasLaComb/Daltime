@@ -43,11 +43,23 @@
           Please enter a valid email address.
         </div>
 
+        <shift-scheduler-input
+          name="phoneNumber"
+          label="Phone Number"
+          type="tel"
+          placeholder="1234567890"
+          [(ngModel)]="phoneNumber"
+          [required]="true"
+        />
+        <div *ngIf="invalidPhoneNumber" class="text-xs text-red-600 mb-2">
+          Please enter a valid 10-digit phone number.
+        </div>
+
         <shift-scheduler-select
           name="company"
           label="Company"
-          [options]="companies"
-          [(ngModel)]="company"
+          [options]="companyOptions"
+          [(ngModel)]="companyId"
           placeholder="Select Company"
           [required]="true"
         />
@@ -59,15 +71,6 @@
           [(ngModel)]="role"
           placeholder="Select Role"
           [required]="true"
-        />
-
-        <shift-scheduler-input
-          *ngIf="role === 'employee'"
-          name="managers"
-          label="Manager(s)"
-          placeholder="Comma-separated"
-          [(ngModel)]="managers"
-          [required]="role === 'employee'"
         />
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
