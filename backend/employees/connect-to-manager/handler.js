@@ -10,14 +10,24 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 exports.handler = async (event) => {
   try {
+    // Debug logging
+    console.log('Event object:', JSON.stringify(event, null, 2));
+    console.log('HTTP Method:', event.httpMethod);
+    console.log('Request Method:', event.requestContext?.http?.method);
+
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
       return responses.success(null, 'CORS preflight success');
     }
 
+    // Check both possible method properties
+    const method = event.httpMethod || event.requestContext?.http?.method;
+
     // Only allow POST requests
-    if (event.httpMethod !== 'POST') {
-      return responses.badRequest('Only POST requests are allowed');
+    if (method !== 'POST') {
+      return responses.badRequest(
+        `Only POST requests are allowed. Received: ${method}`
+      );
     }
 
     // Validate authorization header
