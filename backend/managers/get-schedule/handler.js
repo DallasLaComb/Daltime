@@ -187,14 +187,24 @@ exports.handler = async (event) => {
             notes: assignment.assignment_notes,
             // Add ownership history information
             ownershipHistory: assignment.ownership_history || [],
-            isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
-            transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
-            originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-              ? assignment.ownership_history[0] 
-              : null,
-            currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-              ? assignment.ownership_history[assignment.ownership_history.length - 1] 
-              : null,
+            isTransferred:
+              assignment.ownership_history &&
+              assignment.ownership_history.length > 1,
+            transferCount: assignment.ownership_history
+              ? assignment.ownership_history.length - 1
+              : 0,
+            originalOwner:
+              assignment.ownership_history &&
+              assignment.ownership_history.length > 0
+                ? assignment.ownership_history[0]
+                : null,
+            currentOwner:
+              assignment.ownership_history &&
+              assignment.ownership_history.length > 0
+                ? assignment.ownership_history[
+                    assignment.ownership_history.length - 1
+                  ]
+                : null,
           });
         });
       } finally {

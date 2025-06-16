@@ -161,7 +161,7 @@ exports.handler = async (event) => {
           id: employeeUserId,
           firstName: emp.firstname,
           lastName: emp.lastname,
-          email: emp.email
+          email: emp.email,
         };
       }
     } finally {
@@ -179,8 +179,8 @@ exports.handler = async (event) => {
       const ownershipHistory = [
         {
           ...employeeInfo,
-          transferredAt: new Date().toISOString()
-        }
+          transferredAt: new Date().toISOString(),
+        },
       ];
 
       const updateQuery = `
@@ -200,7 +200,7 @@ exports.handler = async (event) => {
       const updateResult = await updateClient.query(updateQuery, [
         assignmentId,
         employeeUserId,
-        JSON.stringify(ownershipHistory),
+        ownershipHistory,
       ]);
 
       if (updateResult.rows.length === 0) {
@@ -209,39 +209,6 @@ exports.handler = async (event) => {
       }
 
       updatedAssignment = updateResult.rows[0];
-
-      // Update shift fill status since we now have an available spot
-      // (even though technically still assigned to original employee)
-      const shiftUpdateQuery = `
-        UPDATE public.shift 
-        SET 
-          fillstatus = CASE 
-            WHEN COALESCE(active_assignments.assigned_count, 0) >= shift.requiredheadcount THEN 'fully_staffed'
-            WHEN COALESCE(active_assignments.assigned_count, 0) > 0 THEN 'partially_staffed'
-            ELSE 'unstaffed'
-          END,
-          lastupdated = NOW()
-        FROM (
-          SELECT 
-            s.shiftid,
-            s.requiredheadcount,
-            COALESCE(sa_count.assigned_count, 0) as assigned_count
-          FROM public.shift s
-          LEFT JOIN (
-            SELECT 
-              shiftid, 
-              COUNT(*) as assigned_count
-            FROM public.shiftassignment 
-            WHERE status = 'assigned'
-            GROUP BY shiftid
-          ) sa_count ON s.shiftid = sa_count.shiftid
-          WHERE s.shiftid = $1
-        ) active_assignments
-        WHERE shift.shiftid = active_assignments.shiftid
-        AND shift.shiftid = $1
-      `;
-
-      await updateClient.query(shiftUpdateQuery, [assignment.shiftid]);
 
       await updateClient.query('COMMIT');
     } catch (error) {
@@ -269,7 +236,7 @@ exports.handler = async (event) => {
       requiredHeadcount: assignment.requiredheadcount,
       updatedAt: updatedAssignment.lastupdated,
       notes: updatedAssignment.notes,
-      message: 
+      message:
         'Shift has been made available for other coworkers to take. You are still assigned but the shift is now open for coverage.',
     };
 

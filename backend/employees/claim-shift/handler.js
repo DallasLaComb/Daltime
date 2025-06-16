@@ -128,9 +128,7 @@ exports.handler = async (event) => {
 
     // Check if shift is in the future
     if (shiftDate <= today) {
-      return responses.badRequest(
-        'Cannot claim past or current day shifts'
-      );
+      return responses.badRequest('Cannot claim past or current day shifts');
     }
 
     // Check if assignment is available
@@ -158,10 +156,10 @@ exports.handler = async (event) => {
         AND mea.status = 'active'
       `;
 
-      const validationResult = await managerValidationClient.query(managerValidationQuery, [
-        assignment.managerid,
-        employeeUserId,
-      ]);
+      const validationResult = await managerValidationClient.query(
+        managerValidationQuery,
+        [assignment.managerid, employeeUserId]
+      );
 
       if (parseInt(validationResult.rows[0].count) === 0) {
         return responses.forbidden(
@@ -235,30 +233,63 @@ exports.handler = async (event) => {
 
       if (historyResult.rows.length > 0) {
         const row = historyResult.rows[0];
-        
-        // Parse existing ownership history or initialize
-        ownershipHistory = row.ownership_history ? JSON.parse(row.ownership_history) : [];
-        
+
+        // Parse existing ownership history or initialize as empty array
+        try {
+          if (row.ownership_history) {
+            // Handle different data types from PostgreSQL JSON column
+            if (typeof row.ownership_history === 'string') {
+              ownershipHistory = JSON.parse(row.ownership_history);
+            } else if (Array.isArray(row.ownership_history)) {
+              ownershipHistory = row.ownership_history;
+            } else if (typeof row.ownership_history === 'object') {
+              // PostgreSQL might return JSON as an object, check if it's array-like
+              ownershipHistory = Array.isArray(row.ownership_history)
+                ? row.ownership_history
+                : [];
+            } else {
+              ownershipHistory = [];
+            }
+          } else {
+            ownershipHistory = [];
+          }
+        } catch (parseError) {
+          console.error('Error parsing ownership history:', parseError);
+          ownershipHistory = [];
+        }
+
+        // Double-check that ownershipHistory is an array before using array methods
+        if (!Array.isArray(ownershipHistory)) {
+          console.warn(
+            'ownershipHistory is not an array, resetting to empty array:',
+            typeof ownershipHistory,
+            ownershipHistory
+          );
+          ownershipHistory = [];
+        }
+
         currentEmployeeInfo = {
           id: assignment.employeeid,
           firstName: row.current_firstname,
           lastName: row.current_lastname,
-          email: row.current_email
+          email: row.current_email,
         };
 
         claimingEmployeeInfo = {
           id: employeeUserId,
           firstName: row.claiming_firstname,
           lastName: row.claiming_lastname,
-          email: row.claiming_email
+          email: row.claiming_email,
         };
 
         // Add current employee to history if not already present
-        const currentEmployeeInHistory = ownershipHistory.find(emp => emp.id === assignment.employeeid);
+        const currentEmployeeInHistory = ownershipHistory.find(
+          (emp) => emp.id === assignment.employeeid
+        );
         if (!currentEmployeeInHistory) {
           ownershipHistory.push({
             ...currentEmployeeInfo,
-            transferredAt: new Date().toISOString()
+            transferredAt: new Date().toISOString(),
           });
         }
       }
@@ -288,14 +319,13 @@ exports.handler = async (event) => {
         RETURNING *;
       `;
 
-      const ownershipHistoryJson = JSON.stringify(ownershipHistory);
       const newNoteText = `Claimed from ${currentEmployeeInfo.firstName} ${currentEmployeeInfo.lastName}`;
       const appendNoteText = ` - Claimed from ${currentEmployeeInfo.firstName} ${currentEmployeeInfo.lastName}`;
 
       const updateResult = await updateClient.query(updateQuery, [
         assignmentId,
         employeeUserId,
-        ownershipHistoryJson,
+        ownershipHistory,
         newNoteText,
         appendNoteText,
       ]);
@@ -337,8 +367,7 @@ exports.handler = async (event) => {
       updatedAt: updatedAssignment.lastupdated,
       notes: updatedAssignment.notes,
       transferCount: ownershipHistory.length,
-      message: 
-        `Shift successfully claimed from ${currentEmployeeInfo.firstName} ${currentEmployeeInfo.lastName}! You are now assigned to this shift.`,
+      message: `Shift successfully claimed from ${currentEmployeeInfo.firstName} ${currentEmployeeInfo.lastName}! You are now assigned to this shift.`,
     };
 
     return responses.success(

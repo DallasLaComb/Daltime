@@ -77,7 +77,9 @@ exports.handler = async (event) => {
 
     if (!validSortColumns.includes(sortBy)) {
       return responses.badRequest(
-        `Invalid sortBy parameter. Must be one of: ${validSortColumns.join(', ')}`
+        `Invalid sortBy parameter. Must be one of: ${validSortColumns.join(
+          ', '
+        )}`
       );
     }
 
@@ -165,7 +167,9 @@ exports.handler = async (event) => {
         )
         AND s.date >= CURRENT_DATE
         ${dateConditions}
-        ORDER BY s.${sortBy === 'availableat' ? 'date, sa.lastupdated' : sortBy} ${sortOrder.toUpperCase()}, s.date ASC, s.starttime ASC
+        ORDER BY s.${
+          sortBy === 'availableat' ? 'date, sa.lastupdated' : sortBy
+        } ${sortOrder.toUpperCase()}, s.date ASC, s.starttime ASC
       `;
 
       const shiftsResult = await shiftsClient.query(shiftsQuery, queryValues);
@@ -219,9 +223,15 @@ exports.handler = async (event) => {
           lastName: shift.manager_lastname,
           email: shift.manager_email,
         },
-        ownershipHistory: shift.ownership_history ? JSON.parse(shift.ownership_history) : [],
-        transferCount: shift.ownership_history ? JSON.parse(shift.ownership_history).length : 0,
-        originalOwner: shift.ownership_history ? JSON.parse(shift.ownership_history)[0] : null,
+        ownershipHistory: shift.ownership_history
+          ? JSON.parse(shift.ownership_history)
+          : [],
+        transferCount: shift.ownership_history
+          ? JSON.parse(shift.ownership_history).length
+          : 0,
+        originalOwner: shift.ownership_history
+          ? JSON.parse(shift.ownership_history)[0]
+          : null,
         assignedAt: shift.assignedat,
         availableAt: shift.availableat,
         shiftCreatedAt: shift.shift_createdat,

@@ -8,7 +8,7 @@ const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-    // Calculate summary statisticsPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+// Calculate summary statisticsPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
@@ -110,7 +110,13 @@ exports.handler = async (event) => {
     // Validate sort parameters
     const validSortColumns = ['date', 'starttime', 'assignedat'];
     const validSortOrders = ['asc', 'desc'];
-    const validStatuses = ['assigned', 'available', 'completed', 'cancelled', 'all'];
+    const validStatuses = [
+      'assigned',
+      'available',
+      'completed',
+      'cancelled',
+      'all',
+    ];
 
     if (!validSortColumns.includes(sortBy)) {
       return responses.badRequest(
@@ -252,14 +258,24 @@ exports.handler = async (event) => {
         shiftCreatedAt: assignment.shift_createdat,
         // Add ownership history information
         ownershipHistory: assignment.ownership_history || [],
-        isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
-        transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
-        originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-          ? assignment.ownership_history[0] 
-          : null,
-        currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-          ? assignment.ownership_history[assignment.ownership_history.length - 1] 
-          : null,
+        isTransferred:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 1,
+        transferCount: assignment.ownership_history
+          ? assignment.ownership_history.length - 1
+          : 0,
+        originalOwner:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 0
+            ? assignment.ownership_history[0]
+            : null,
+        currentOwner:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 0
+            ? assignment.ownership_history[
+                assignment.ownership_history.length - 1
+              ]
+            : null,
       });
     });
 
@@ -347,14 +363,24 @@ exports.handler = async (event) => {
         shiftCreatedAt: assignment.shift_createdat,
         // Add ownership history information
         ownershipHistory: assignment.ownership_history || [],
-        isTransferred: assignment.ownership_history && assignment.ownership_history.length > 1,
-        transferCount: assignment.ownership_history ? assignment.ownership_history.length - 1 : 0,
-        originalOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-          ? assignment.ownership_history[0] 
-          : null,
-        currentOwner: assignment.ownership_history && assignment.ownership_history.length > 0 
-          ? assignment.ownership_history[assignment.ownership_history.length - 1] 
-          : null,
+        isTransferred:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 1,
+        transferCount: assignment.ownership_history
+          ? assignment.ownership_history.length - 1
+          : 0,
+        originalOwner:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 0
+            ? assignment.ownership_history[0]
+            : null,
+        currentOwner:
+          assignment.ownership_history &&
+          assignment.ownership_history.length > 0
+            ? assignment.ownership_history[
+                assignment.ownership_history.length - 1
+              ]
+            : null,
       })),
       scheduleByDate: scheduleByDate,
       summary: summary,
