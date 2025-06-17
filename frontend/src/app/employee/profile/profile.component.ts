@@ -46,7 +46,10 @@ export class EmployeeProfileComponent implements OnInit {
           console.log('Managers Response:', response);
           console.log('Available Managers:', response.data?.availableManagers);
           if (response.data?.availableManagers?.length > 0) {
-            console.log('First manager structure:', response.data.availableManagers[0]);
+            console.log(
+              'First manager structure:',
+              response.data.availableManagers[0]
+            );
           }
           this.managers = response.data;
           this.loading = false;
@@ -79,9 +82,9 @@ export class EmployeeProfileComponent implements OnInit {
         `${environment.apiBaseUrl}/employees/managers/connect`,
         { managerId },
         {
-          headers: { 
+          headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
         }
       )
