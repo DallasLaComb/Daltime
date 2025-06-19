@@ -53,6 +53,7 @@ jobs:
               SupabaseUrl=${{ secrets.SUPABASE_URL }} \
               SupabaseAnonKey=${{ secrets.SUPABASE_ANON_KEY }} \
               SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }} \
+              SupabaseDbUrl=${{ secrets.SUPABASE_DB_URL }} \
               CorsOrigin=https://d16xw44bg2jkad.cloudfront.net
 
 
