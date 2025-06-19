@@ -3,9 +3,9 @@ const { Pool } = require('pg');
 console.log('Pool layer initializing...');
 console.log('Environment check:', {
   hasDbUrl: !!process.env.SUPABASE_DB_URL,
-  dbUrlPreview: process.env.SUPABASE_DB_URL ? 
-    process.env.SUPABASE_DB_URL.substring(0, 20) + '...' : 
-    'undefined'
+  dbUrlPreview: process.env.SUPABASE_DB_URL
+    ? process.env.SUPABASE_DB_URL.substring(0, 20) + '...'
+    : 'undefined',
 });
 
 // Create the pool once for Lambda reuse
