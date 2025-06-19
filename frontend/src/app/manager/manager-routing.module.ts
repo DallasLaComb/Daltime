@@ -11,6 +11,13 @@ const routes: Routes = [
       ),
   },
   {
+    path: 'schedule',
+    loadComponent: () =>
+      import('./components/manager-schedule/manager-schedule.component').then(
+        (m) => m.ManagerScheduleComponent
+      ),
+  },
+  {
     path: 'employees',
     loadComponent: () =>
       import('./components/manager-employees/manager-employees.component').then(

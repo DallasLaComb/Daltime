@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ManagerScheduleComponent } from './manager-schedule/manager-schedule.component';
 
 @Component({
   selector: 'app-manager-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ManagerScheduleComponent],
   template: `
     <div class="dashboard-container">
       <h1>Manager Dashboard</h1>
@@ -30,6 +31,11 @@ import { CommonModule } from '@angular/common';
         <button class="btn btn-primary" (click)="viewSchedule()">View Schedule</button>
         <button class="btn btn-secondary" (click)="manageEmployees()">Manage Employees</button>
         <button class="btn btn-warning" (click)="postShift()">Post New Shift</button>
+      </div>
+
+      <!-- Schedule Section -->
+      <div class="mt-8">
+        <app-manager-schedule></app-manager-schedule>
       </div>
     </div>
   `,
