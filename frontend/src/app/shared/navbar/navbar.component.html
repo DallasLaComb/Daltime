@@ -43,7 +43,19 @@
               (click)="navigateTo('/manager/dashboard')"
               class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
             >
-              Manager Dashboard
+              Dashboard
+            </a>
+            <a
+              (click)="navigateTo('/manager/employees')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Employees
+            </a>
+            <a
+              (click)="navigateTo('/manager/shifts-needed')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Shifts Needed
             </a>
           </ng-container>
 
@@ -143,7 +155,19 @@
                   (click)="navigateTo('/manager/dashboard')"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                 >
-                  Manager Dashboard
+                  Dashboard
+                </a>
+                <a
+                  (click)="navigateTo('/manager/employees')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Employees
+                </a>
+                <a
+                  (click)="navigateTo('/manager/shifts-needed')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Shifts Needed
                 </a>
               </ng-container>
 
