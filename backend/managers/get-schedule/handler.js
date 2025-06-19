@@ -9,6 +9,13 @@ const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 exports.handler = async (event) => {
+  console.log('Get schedule handler started');
+  console.log('Environment check:', {
+    hasSupabaseUrl: !!SUPABASE_URL,
+    hasSupabaseServiceRole: !!SUPABASE_SERVICE_ROLE,
+    hasPoolConnection: !!pool
+  });
+
   try {
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -20,16 +27,19 @@ exports.handler = async (event) => {
       event.headers?.authorization || event.headers?.Authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('No authorization header found');
       return responses.unauthorized('Authorization token required');
     }
 
     const token = authHeader.split(' ')[1];
 
     if (!token || token.split('.').length !== 3) {
+      console.error('Invalid token format');
       return responses.unauthorized('Invalid token format');
     }
 
     // Validate the token and get user info
+    console.log('Validating token with Supabase...');
     const {
       data: { user },
       error: userError,
@@ -40,7 +50,10 @@ exports.handler = async (event) => {
       return responses.unauthorized('Invalid or expired token');
     }
 
+    console.log('User validated:', user.id);
+
     // Verify user is a manager
+    console.log('Connecting to database...');
     const client = await pool.connect();
     let managerUserId;
 
@@ -51,15 +64,21 @@ exports.handler = async (event) => {
         WHERE au.userid = $1 AND au.role = 'manager'
       `;
 
+      console.log('Checking manager role for user:', user.id);
       const userResult = await client.query(userQuery, [user.id]);
 
       if (userResult.rows.length === 0) {
+        console.error('User is not a manager or does not exist');
         return responses.forbidden(
           'Access denied. Only managers can view schedule.'
         );
       }
 
       managerUserId = userResult.rows[0].userid;
+      console.log('Manager validated:', managerUserId);
+    } catch (dbError) {
+      console.error('Database error during user validation:', dbError);
+      throw dbError;
     } finally {
       client.release();
     }
@@ -89,6 +108,7 @@ exports.handler = async (event) => {
     }
 
     // Get all shifts for this manager with comprehensive details
+    console.log('Querying shifts for manager:', managerUserId);
     const shiftsClient = await pool.connect();
     let shifts;
 
@@ -123,8 +143,13 @@ exports.handler = async (event) => {
         ORDER BY s.date, s.starttime
       `;
 
+      console.log('Executing shifts query with params:', queryValues);
       const shiftsResult = await shiftsClient.query(shiftsQuery, queryValues);
       shifts = shiftsResult.rows;
+      console.log('Found shifts:', shifts.length);
+    } catch (queryError) {
+      console.error('Error executing shifts query:', queryError);
+      throw queryError;
     } finally {
       shiftsClient.release();
     }
@@ -287,7 +312,12 @@ exports.handler = async (event) => {
       `Schedule retrieved successfully. ${summary.totalShifts} shifts found.`
     );
   } catch (err) {
-    console.error('Get schedule error:', err);
-    return responses.serverError(err.message);
+    console.error('Get schedule error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail
+    });
+    return responses.serverError(`Error retrieving schedule: ${err.message}`);
   }
 };
