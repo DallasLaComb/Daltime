@@ -1,9 +1,0 @@
-{
-  "name": "env-test",
-  "version": "1.0.0",
-  "main": "handler.js",
-  "dependencies": {
-    "pg": "^8.11.0",
-    "dotenv": "^16.5.0"
-  }
-}
