@@ -11,6 +11,7 @@
   "description": "Lambda function for managers to get schedule with shifts and assignments",
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "pg": "^8.16.0"
   }
 }
