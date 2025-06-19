@@ -1,7 +1,12 @@
+// Custom styles to complement Tailwind CSS
+
 .navbar {
   background-color: #f8f9fa;
   padding: 1rem;
   border-bottom: 1px solid #ddd;
+
+  // Any additional custom styles can go here
+  // Most styling is now handled by Tailwind classes
 }
 
 .navbar ul {
@@ -18,4 +23,22 @@
 
 .navbar li a:hover {
   text-decoration: underline;
+}
+
+// Smooth dropdown animation
+.dropdown-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.dropdown-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.2s ease-out;
+}
+
+// Focus states for accessibility
+button:focus-visible {
+  outline: 2px solid theme('colors.blue.500');
+  outline-offset: 2px;
 }
