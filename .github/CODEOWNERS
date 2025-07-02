@@ -1,1 +1,14 @@
-* @HooghirM
+# Global code ownership
+* @DallasLaComb
+
+# Specific ownership for key directories
+/frontend/ @DallasLaComb
+/backend/ @DallasLaComb
+/.github/ @DallasLaComb
+/docs/ @DallasLaComb
+
+# Configuration files
+*.json @DallasLaComb
+*.yml @DallasLaComb
+*.yaml @DallasLaComb
+*.md @DallasLaComb
