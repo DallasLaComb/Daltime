@@ -1,0 +1,9 @@
+{
+  "name": "logout-function",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "dotenv": "^16.5.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "archive-shifts",
+  "version": "1.0.0",
+  "description": "Scheduled Lambda to archive old shifts and assignments",
+  "main": "handler.js",
+  "dependencies": {},
+  "author": "Dallas LaComb",
+  "license": "MIT"
+}

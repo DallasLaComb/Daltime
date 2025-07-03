@@ -1,0 +1,20 @@
+{
+  "name": "get-managers",
+  "version": "1.0.0",
+  "description": "Lambda function for employees to view their current and available managers",
+  "main": "handler.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "lambda",
+    "employees",
+    "managers",
+    "assignments",
+    "company"
+  ],
+  "author": "Shift Scheduler Team",
+  "license": "MIT"
+}

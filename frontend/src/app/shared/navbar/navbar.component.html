@@ -1,0 +1,204 @@
+<nav class="bg-white shadow-lg border-b border-gray-200" *ngIf="role">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+      <!-- Logo/Brand -->
+      <div class="flex-shrink-0 flex items-center">
+        <h1 class="text-xl font-bold text-blue-600">Shift Scheduler</h1>
+      </div>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden md:block">
+        <div class="ml-10 flex items-baseline space-x-4">
+          <!-- Employee Navigation -->
+          <ng-container *ngIf="role === 'employee'">
+            <a
+              (click)="navigateTo('/employee/dashboard')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Dashboard
+            </a>
+            <a
+              (click)="navigateTo('/employee/profile')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Profile
+            </a>
+            <a
+              (click)="navigateTo('/employee/availability')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Availability
+            </a>
+            <a
+              (click)="navigateTo('/employee/take-shifts')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Take Shifts
+            </a>
+          </ng-container>
+
+          <!-- Manager Navigation -->
+          <ng-container *ngIf="role === 'manager'">
+            <a
+              (click)="navigateTo('/manager/dashboard')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Dashboard
+            </a>
+            <a
+              (click)="navigateTo('/manager/employees')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Employees
+            </a>
+            <a
+              (click)="navigateTo('/manager/shifts-needed')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Shifts Needed
+            </a>
+          </ng-container>
+
+          <!-- Admin Navigation -->
+          <ng-container *ngIf="role === 'admin'">
+            <a
+              (click)="navigateTo('/admin/dashboard')"
+              class="text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200"
+            >
+              Admin Dashboard
+            </a>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- User Profile Dropdown -->
+      <div class="relative">
+        <button
+          (click)="toggleDropdown()"
+          class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-3 py-2 transition-colors duration-200"
+        >
+          <!-- User Avatar -->
+          <div
+            class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center"
+          >
+            <span class="text-white text-sm font-medium">
+              {{ (userName || userEmail || 'U')[0].toUpperCase() }}
+            </span>
+          </div>
+          <span class="hidden sm:block text-sm font-medium">{{
+            userName || userEmail
+          }}</span>
+          <!-- Dropdown Arrow -->
+          <svg
+            class="w-4 h-4 transition-transform duration-200"
+            [class.rotate-180]="isDropdownOpen"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div
+          *ngIf="isDropdownOpen"
+          class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+        >
+          <div class="py-1">
+            <!-- User Info Header -->
+            <div class="px-4 py-2 border-b border-gray-100">
+              <p class="text-sm font-medium text-gray-900">
+                {{ userName || userEmail }}
+              </p>
+              <p class="text-xs text-gray-500 capitalize">{{ role }}</p>
+            </div>
+
+            <!-- Mobile Navigation Links -->
+            <div class="md:hidden border-b border-gray-100">
+              <!-- Employee Links -->
+              <ng-container *ngIf="role === 'employee'">
+                <a
+                  (click)="navigateTo('/employee/dashboard')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Dashboard
+                </a>
+                <a
+                  (click)="navigateTo('/employee/profile')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Profile
+                </a>
+                <a
+                  (click)="navigateTo('/employee/availability')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Availability
+                </a>
+                <a
+                  (click)="navigateTo('/employee/take-shifts')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Take Shifts
+                </a>
+              </ng-container>
+
+              <!-- Manager Links -->
+              <ng-container *ngIf="role === 'manager'">
+                <a
+                  (click)="navigateTo('/manager/dashboard')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Dashboard
+                </a>
+                <a
+                  (click)="navigateTo('/manager/employees')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Employees
+                </a>
+                <a
+                  (click)="navigateTo('/manager/shifts-needed')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Shifts Needed
+                </a>
+              </ng-container>
+
+              <!-- Admin Links -->
+              <ng-container *ngIf="role === 'admin'">
+                <a
+                  (click)="navigateTo('/admin/dashboard')"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  Admin Dashboard
+                </a>
+              </ng-container>
+            </div>
+
+            <!-- Logout Button -->
+            <button
+              (click)="logout()"
+              class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer transition-colors duration-200"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Click outside to close dropdown -->
+  <div
+    *ngIf="isDropdownOpen"
+    (click)="isDropdownOpen = false"
+    class="fixed inset-0 z-40"
+  ></div>
+</nav>

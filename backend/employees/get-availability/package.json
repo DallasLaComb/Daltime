@@ -1,0 +1,19 @@
+{
+  "name": "get-availability",
+  "version": "1.0.0",
+  "description": "Lambda function for employees to view their submitted availability",
+  "main": "handler.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.16.0"
+  },
+  "keywords": [
+    "lambda",
+    "employees",
+    "availability",
+    "schedule"
+  ],
+  "author": "Shift Scheduler Team",
+  "license": "MIT"
+}
