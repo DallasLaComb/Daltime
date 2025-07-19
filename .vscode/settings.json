@@ -1,4 +1,9 @@
 {
-  "editor.formatOnSave": true,
+  "typescript.validate.enable": false,
+  "javascript.validate.enable": false,
+  "eslint.enable": false,
+  "problems.decorations.enabled": false,
+  "editor.renderValidationDecorations": "off",
+  "prettier.enable": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode"
 }
