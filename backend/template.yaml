@@ -1,0 +1,451 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  SupabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: 'Your Supabase project URL'
+  SupabaseAnonKey:
+    Type: String
+    NoEcho: true
+    Description: 'Your Supabase anon key'
+  SupabaseServiceRole:
+    Type: String
+    NoEcho: true
+    Description: 'Your Supabase service role key'
+  SupabaseDbUrl:
+    Type: String
+    NoEcho: true
+    Description: 'Your Supabase database connection string'
+  CorsOrigin:
+    Type: String
+    Default: '*'
+    Description: 'Allowed CORS origin (e.g., https://app.mysite.com)'
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 10
+    MemorySize: 128
+
+Resources:
+  SharedUtilitiesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SharedUtilitiesLayer
+      Description: Shared utilities layer including database pool and headers
+      ContentUri: layers/
+      CompatibleRuntimes:
+        - nodejs18.x
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: nodejs18.x
+
+  ApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: Prod
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref CorsOrigin
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  RegisterUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/register/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        RegisterApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/register
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  LoginUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/login/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        LoginApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/login
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  LogoutUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/logout/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        LogoutApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/logout
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetCurrentUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/me/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        MeApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/me
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  PostAvailabilityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/post-availability/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        PostAvailabilityApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/availability
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetAvailabilityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-availability/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetAvailabilityApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/availability
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  GetEmployeeScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-schedule/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetEmployeeScheduleApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/schedule
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  EmployeePostShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/post-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        EmployeePostShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/shift
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  EmployeeClaimShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/claim-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        EmployeeClaimShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/shift/claim
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetAvailableShiftsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-available-shifts/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetAvailableShiftsApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/available-shifts
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  GetManagersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/get-managers/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetManagersApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/managers
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  ConnectToManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: employees/connect-to-manager/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        ConnectToManagerApi:
+          Type: HttpApi
+          Properties:
+            Path: /employees/managers/connect
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  PostShiftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/post-shift/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        PostShiftApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/shifts
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetAllEmployeesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/get-all-employees/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetAllEmployeesApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/employees
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  PostScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/post-schedule/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        PostScheduleApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/schedule
+            Method: POST
+            ApiId: !Ref ApiGateway
+
+  GetWeeklyHoursFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/get-weekly-hours/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetWeeklyHoursApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/weekly-hours
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  GetScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: managers/get-schedule/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          CORS_ORIGIN: !Ref CorsOrigin
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+      Events:
+        GetScheduleApi:
+          Type: HttpApi
+          Properties:
+            Path: /managers/schedule
+            Method: GET
+            ApiId: !Ref ApiGateway
+
+  # Scheduled Archive Function - Runs on 1st of every month
+  ArchiveShiftsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: scheduled/archive-shifts/
+      Handler: handler.handler
+      Timeout: 300 # 5 minutes for archiving operations
+      MemorySize: 256 # More memory for batch operations
+      Layers:
+        - !Ref SharedUtilitiesLayer
+      Environment:
+        Variables:
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE: !Ref SupabaseServiceRole
+          SUPABASE_DB_URL: !Ref SupabaseDbUrl
+      Events:
+        MonthlyArchiveSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: 'cron(0 2 1 * ? *)' # 2 AM UTC on 1st of every month
+            Description: 'Monthly archive of old shifts and assignments'
+            Input: |
+              {
+                "source": "scheduled-archive",
+                "detail-type": "Monthly Shift Archive"
+              }
+        # Add this temporary event for testing in Postman
+        TestArchiveApi:
+          Type: HttpApi
+          Properties:
+            Path: /test/archive
+            Method: POST
+            ApiId: !Ref ApiGateway

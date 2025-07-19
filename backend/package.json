@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "dev": "dotenv -- sam local start-api --parameter-overrides \"ParameterKey=SupabaseUrl,ParameterValue=$SUPABASE_URL\" \"ParameterKey=SupabaseAnonKey,ParameterValue=$SUPABASE_ANON_KEY\" \"ParameterKey=SupabaseServiceRole,ParameterValue=$SUPABASE_SERVICE_ROLE\" \"ParameterKey=SupabaseDbUrl,ParameterValue=$SUPABASE_DB_URL\" \"ParameterKey=CorsOrigin,ParameterValue=*\""
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testMatch": [
+      "**/test/**/*.test.js"
+    ],
+    "testEnvironment": "node"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "dotenv": "^16.5.0",
+    "pg": "^8.16.0"
+  }
+}

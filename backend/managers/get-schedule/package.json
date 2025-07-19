@@ -1,0 +1,17 @@
+{
+  "name": "get-schedule",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Dallas LaComb",
+  "license": "ISC",
+  "description": "Lambda function for managers to get schedule with shifts and assignments",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "dotenv": "^16.5.0",
+    "pg": "^8.16.0"
+  }
+}
