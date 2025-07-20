@@ -27,12 +27,6 @@ describe('Register Handler', () => {
     responses.serverError.mockReturnValue({ statusCode: 500 });
   });
 
-  describe('simple test', () => {
-    it('should pass', () => {
-      expect(true).toBe(true);
-    });
-  });
-
   describe('successful registration', () => {
     it('should register a new user successfully', async () => {
       const event = {
