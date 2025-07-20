@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import logoWithName from '../../assets/logo-with-name.png';
 
 function Register() {
