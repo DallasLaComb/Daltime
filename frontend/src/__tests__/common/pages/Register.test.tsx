@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 // import userEvent from '@testing-library/user-event'; // Uncomment if using userEvent
 import Register from '../../../common/pages/Register';
 
@@ -21,7 +20,7 @@ describe('Register Component', () => {
   //Generate a test to make sure that role can only Admin, Manager, Employee
   it('allows only specific roles', () => {
     setup();
-    const roleInput = screen.getByLabelText(/role/i);
+    const roleInput = screen.getByLabelText(/role/i) as HTMLSelectElement;
     fireEvent.change(roleInput, { target: { value: 'Admin' } });
     expect(roleInput.value).toBe('Admin');
     fireEvent.change(roleInput, { target: { value: 'Manager' } });
@@ -38,31 +37,31 @@ describe('Min and Max Length validation', () => {
   };
   it('Maximum length for email is 255 characters', () => {
     setup();
-    const emailInput = screen.getByLabelText(/email/i);
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
     fireEvent.change(emailInput, { target: { value: 'a'.repeat(256) } });
     expect(emailInput.value.length).toBeLessThanOrEqual(255);
   });
   it('Maximum length for password is 64 character', () => {
     setup();
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
     fireEvent.change(passwordInput, { target: { value: 'a'.repeat(65) } });
     expect(passwordInput.value.length).toBeLessThanOrEqual(64);
   });
   it('Maximum length for first name is 50 characters', () => {
     setup();
-    const firstNameInput = screen.getByLabelText(/first name/i);
+    const firstNameInput = screen.getByLabelText(/first name/i) as HTMLInputElement;
     fireEvent.change(firstNameInput, { target: { value: 'a'.repeat(51) } });
     expect(firstNameInput.value.length).toBeLessThanOrEqual(50);
   });
   it('Maximum length for last name is 50 characters', () => {
     setup();
-    const lastNameInput = screen.getByLabelText(/last name/i);
+    const lastNameInput = screen.getByLabelText(/last name/i) as HTMLInputElement;
     fireEvent.change(lastNameInput, { target: { value: 'a'.repeat(51) } });
     expect(lastNameInput.value.length).toBeLessThanOrEqual(50);
   });
   it('Length for phone number is 10 characters', () => {
     setup();
-    const phoneNumberInput = screen.getByLabelText(/phone number/i);
+    const phoneNumberInput = screen.getByLabelText(/phone number/i) as HTMLInputElement;
     fireEvent.change(phoneNumberInput, { target: { value: '12345678901' } });
     expect(phoneNumberInput.value.length).toBe(10);
   });
