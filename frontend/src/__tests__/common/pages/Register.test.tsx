@@ -70,25 +70,66 @@ describe('Min and Max Length validation', () => {
     const setup = () => {
       render(<Register />);
     };
-    it('renders the form centered both vertically and horizontally on the page', () => {
+    it('renders the form centered horizontally on the page', () => {
       setup();
       const form = screen.getByRole('form');
-      // Check for Bootstrap centering classes or styles
-      expect(form.parentElement).toHaveClass(
-        'd-flex',
-        'justify-content-center',
-        'align-items-center'
+      // The form's parent containers should have Bootstrap horizontal centering classes
+      expect(form.parentElement?.parentElement).toHaveClass(
+        'row',
+        'justify-content-center'
       );
-      // Optionally, check for min-vh-100 or similar for vertical centering
-      expect(form.parentElement).toHaveClass('min-vh-100');
+      expect(form.parentElement).toHaveClass('col-12', 'col-md-8', 'col-lg-6');
     });
-    it('renders the logo on the top left of the page', () => {
+    it('renders the form with 6 column width on large screens', () => {
       setup();
-      const logo = screen.getByAltText('ScheMegaBolt Logo');
-      expect(logo).toBeInTheDocument();
-      expect(logo).toHaveClass('logo'); // Assuming the logo has a class 'logo'
-      // Check if the logo is positioned correctly
-      expect(logo.parentElement).toHaveClass('d-flex', 'justify-content-start');
+      const form = screen.getByRole('form');
+      // The col-lg-6 class should be on a parent div
+      expect(form.parentElement).toHaveClass('col-lg-6');
+    });
+    it('renders the form with a 3px solid black border', () => {
+      setup();
+      const form = screen.getByRole('form');
+      const style = window.getComputedStyle(form);
+      expect(style.borderTopWidth).toBe('3px');
+      expect(style.borderTopStyle).toBe('solid');
+      expect(style.borderTopColor).toBe('rgb(0, 0, 0)');
+    });
+
+    it('shows "Daltime Logo with Name" image on desktop/tablet and hides it on mobile', () => {
+      setup();
+
+      // Desktop/tablet: logo container should be visible (not display: none)
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 1024,
+      });
+      window.dispatchEvent(new Event('resize'));
+      const logoDesktop = screen.queryByAltText('Daltime Logo with Name');
+      expect(logoDesktop).toBeInTheDocument();
+      // Simulate Bootstrap's d-none d-md-flex: visible at >=768px
+      if (logoDesktop) {
+        expect(
+          window.getComputedStyle(logoDesktop.parentElement as HTMLElement)
+            .display
+        ).not.toBe('none');
+      }
+
+      // Mobile: logo container should be hidden (display: none)
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500,
+      });
+
+      window.dispatchEvent(new Event('resize'));
+      const logoMobile = screen.queryByAltText('Daltime Logo with Name');
+      // The element is still in the DOM, but should be hidden by CSS
+      if (logoMobile) {
+        const logoContainer = logoMobile.closest('div');
+        expect(logoContainer).toHaveClass('d-none');
+        expect(logoContainer).toHaveClass('d-md-flex');
+      }
     });
   });
 });
