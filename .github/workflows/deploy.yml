@@ -1,0 +1,111 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-build-deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build application
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Change to your AWS region
+      
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET }} --delete
+      
+      - name: Invalidate CloudFront cache (if using CloudFront)
+        run: |
+          if [ -n "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          fi
+
+  backend-deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Change to your AWS region
+      
+      - name: Install AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+      
+      - name: SAM Build
+        run: sam build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
+      - name: SAM Deploy
+        run: |
+          sam deploy \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --stack-name shift-scheduler \
+            --s3-bucket ${{ secrets.SAM_DEPLOY_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              SupabaseUrl=${{ secrets.SUPABASE_URL }} \
+              SupabaseAnonKey=${{ secrets.SUPABASE_ANON_KEY }} \
+              SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }}

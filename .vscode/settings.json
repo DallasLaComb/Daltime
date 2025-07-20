@@ -5,5 +5,6 @@
   "problems.decorations.enabled": false,
   "editor.renderValidationDecorations": "off",
   "prettier.enable": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }

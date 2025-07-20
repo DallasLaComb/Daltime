@@ -3,17 +3,20 @@ module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/src/common/__mocks__/fileMock.js',
   },
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true,
-      tsconfig: 'tsconfig.test.json'
-    }],
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        useESM: true,
+        tsconfig: 'tsconfig.test.json',
+      },
+    ],
   },
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.(ts|tsx)',
-    '<rootDir>/src/**/*.(test|spec).(ts|tsx)'
+    '<rootDir>/src/**/*.(test|spec).(ts|tsx)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
@@ -21,5 +24,5 @@ module.exports = {
     '!src/index.tsx',
     '!src/reportWebVitals.ts',
   ],
-  extensionsToTreatAsEsm: ['.ts', '.tsx']
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
 };
