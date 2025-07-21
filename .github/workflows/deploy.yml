@@ -58,45 +58,9 @@ jobs:
             aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
           fi
 
-  lambda-layer-deploy:
-    name: Build and Deploy Lambda Layer
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: lambda-layer
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'lambda-layer/package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Lambda Layer
-        run: npm run build # Adjust if your build command is different
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Copy Layer to S3 (using SAM_DEPLOY_BUCKET)
-        run: |
-          aws s3 cp build/layer.zip s3://${{ secrets.SAM_DEPLOY_BUCKET }}/layers/layer.zip
-
   backend-deploy:
     name: Deploy Backend
     runs-on: ubuntu-latest
-    needs: lambda-layer-deploy
     defaults:
       run:
         working-directory: backend
@@ -146,6 +110,4 @@ jobs:
               SupabaseUrl=${{ secrets.SUPABASE_URL }} \
               SupabaseAnonKey=${{ secrets.SUPABASE_ANON_KEY }} \
               SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }} \
-              SupabaseDbUrl=${{ secrets.SUPABASE_DB_URL }} \
-              LambdaLayerS3Bucket=${{ secrets.SAM_DEPLOY_BUCKET }} \
-              LambdaLayerS3Key=layers/layer.zip
+              SupabaseDbUrl=${{ secrets.SUPABASE_DB_URL }}
