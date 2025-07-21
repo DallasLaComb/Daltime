@@ -210,111 +210,116 @@ describe('Register Component', () => {
     });
   });
 
-  describe('Form submission', () => {
-    const fillForm = () => {
-      const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-      const passwordInput = screen.getByLabelText(
-        /password/i
-      ) as HTMLInputElement;
-      const firstNameInput = screen.getByLabelText(
-        /first name/i
-      ) as HTMLInputElement;
-      const lastNameInput = screen.getByLabelText(
-        /last name/i
-      ) as HTMLInputElement;
-      const phoneNumberInput = screen.getByLabelText(
-        /phone number/i
-      ) as HTMLInputElement;
-      const roleSelect = screen.getByLabelText(/role/i) as HTMLSelectElement;
-      const companySelect = screen.getByLabelText(
-        /company/i
-      ) as HTMLSelectElement;
+  // Helper to fill the form for Employee role
+  const fillForm = (overrides: Partial<Record<string, string>> = {}) => {
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    const firstNameInput = screen.getByLabelText(/first name/i) as HTMLInputElement;
+    const lastNameInput = screen.getByLabelText(/last name/i) as HTMLInputElement;
+    const phoneNumberInput = screen.getByLabelText(/phone number/i) as HTMLInputElement;
+    const roleSelect = screen.getByLabelText(/role/i) as HTMLSelectElement;
+    const companySelect = screen.getByLabelText(/company/i) as HTMLSelectElement;
 
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.change(firstNameInput, { target: { value: 'John' } });
-      fireEvent.change(lastNameInput, { target: { value: 'Doe' } });
-      fireEvent.change(phoneNumberInput, { target: { value: '1234567890' } });
+    fireEvent.change(emailInput, { target: { value: overrides.email ?? 'test@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: overrides.password ?? 'password123' } });
+    fireEvent.change(firstNameInput, { target: { value: overrides.firstName ?? 'John' } });
+    fireEvent.change(lastNameInput, { target: { value: overrides.lastName ?? 'Doe' } });
+    fireEvent.change(phoneNumberInput, { target: { value: overrides.phoneNumber ?? '1234567890' } });
+    fireEvent.change(roleSelect, { target: { value: overrides.role ?? 'Employee' } });
+    if (overrides.role === 'Manager' || overrides.role === 'Admin') {
+      // No managerID field for these roles
+    } else {
+      // Wait for managerID field to appear if Employee
+      const managerIdInput = screen.queryByLabelText(/managerid/i) as HTMLInputElement | null;
+      if (managerIdInput) {
+        fireEvent.change(managerIdInput, { target: { value: overrides.managerId ?? 'manager-123' } });
+      }
+    }
+    fireEvent.change(companySelect, {
+      target: { value: overrides.companyId ?? '0433bb9b-fd98-459a-8b2e-b48e854ace17' },
+    });
+  };
+
+  describe('Conditional managerID field', () => {
+    beforeEach(() => {
+      render(<Register />);
+    });
+
+    it('shows the managerID field only when role is Employee', () => {
+      const roleSelect = screen.getByLabelText(/role/i) as HTMLSelectElement;
+
+      // Initially, managerID field should not be visible
+      expect(screen.queryByLabelText(/managerid/i)).not.toBeInTheDocument();
+
+      // Select Employee
       fireEvent.change(roleSelect, { target: { value: 'Employee' } });
-      fireEvent.change(companySelect, {
-        target: { value: '0433bb9b-fd98-459a-8b2e-b48e854ace17' },
-      });
-    };
+      expect(screen.getByLabelText(/managerid/i)).toBeInTheDocument();
 
-    it('submits the form with valid data', async () => {
-      render(<Register />);
+      // Select Manager
+      fireEvent.change(roleSelect, { target: { value: 'Manager' } });
+      expect(screen.queryByLabelText(/managerid/i)).not.toBeInTheDocument();
 
-      fillForm();
-
-      const submitButton = screen.getByRole('button', { name: /register/i });
-      fireEvent.click(submitButton);
-
-      // Wait for the button to show loading state
-      await waitFor(() => {
-        expect(screen.getByText(/registering.../i)).toBeInTheDocument();
-      });
+      // Select Admin
+      fireEvent.change(roleSelect, { target: { value: 'Admin' } });
+      expect(screen.queryByLabelText(/managerid/i)).not.toBeInTheDocument();
     });
 
-    it('shows validation error for empty fields', async () => {
-      render(<Register />);
-
-      const submitButton = screen.getByRole('button', { name: /register/i });
-
-      // Submit the form within act to ensure state updates are processed
-      await act(async () => {
-        fireEvent.submit(submitButton.closest('form'));
-      });
-
-      // Wait for the validation error to appear with a longer timeout
-      const errorMessage = await screen.findByText(/all fields are required/i, {}, { timeout: 3000 });
-      expect(errorMessage).toBeInTheDocument();
-    });
-
-    it('shows validation error for invalid email', async () => {
-      render(<Register />);
-
-      // Fill all fields except make email invalid
-      const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-      const passwordInput = screen.getByLabelText(
-        /password/i
-      ) as HTMLInputElement;
-      const firstNameInput = screen.getByLabelText(
-        /first name/i
-      ) as HTMLInputElement;
-      const lastNameInput = screen.getByLabelText(
-        /last name/i
-      ) as HTMLInputElement;
-      const phoneNumberInput = screen.getByLabelText(
-        /phone number/i
-      ) as HTMLInputElement;
+    it('allows input in the managerID field when visible', () => {
       const roleSelect = screen.getByLabelText(/role/i) as HTMLSelectElement;
-      const companySelect = screen.getByLabelText(
-        /company/i
-      ) as HTMLSelectElement;
-
-      // Use act for all state-changing operations
-      act(() => {
-        fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-        fireEvent.change(passwordInput, { target: { value: 'password123' } });
-        fireEvent.change(firstNameInput, { target: { value: 'John' } });
-        fireEvent.change(lastNameInput, { target: { value: 'Doe' } });
-        fireEvent.change(phoneNumberInput, { target: { value: '1234567890' } });
-        fireEvent.change(roleSelect, { target: { value: 'Employee' } });
-        fireEvent.change(companySelect, {
-          target: { value: '0433bb9b-fd98-459a-8b2e-b48e854ace17' },
-        });
-      });
-
-      const submitButton = screen.getByRole('button', { name: /register/i });
-
-      // Submit the form within act to ensure state updates are processed
-      await act(async () => {
-        fireEvent.submit(submitButton.closest('form'));
-      });
-
-      // Wait for the email validation error to appear
-      const errorMessage = await screen.findByText(/please enter a valid email address/i, {}, { timeout: 3000 });
-      expect(errorMessage).toBeInTheDocument();
+      fireEvent.change(roleSelect, { target: { value: 'Employee' } });
+      const managerIdInput = screen.getByLabelText(
+        /managerid/i
+      ) as HTMLInputElement;
+      fireEvent.change(managerIdInput, { target: { value: 'manager-123' } });
+      expect(managerIdInput.value).toBe('manager-123');
     });
+  });
+
+  it('submits the form with valid data', async () => {
+    render(<Register />);
+    fillForm();
+    const submitButton = screen.getByRole('button', { name: /register/i });
+    fireEvent.click(submitButton);
+    // Wait for the button to show loading state
+    await waitFor(() => {
+      expect(screen.getByText(/registering.../i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows validation error for empty fields', async () => {
+    render(<Register />);
+
+    const submitButton = screen.getByRole('button', { name: /register/i });
+
+    // Submit the form within act to ensure state updates are processed
+    await act(async () => {
+      fireEvent.submit(submitButton.closest('form'));
+    });
+
+    // Wait for the validation error to appear with a longer timeout
+    const errorMessage = await screen.findByText(
+      /all fields are required/i,
+      {},
+      { timeout: 3000 }
+    );
+    expect(errorMessage).toBeInTheDocument();
+  });
+
+  it('shows validation error for invalid email', async () => {
+    render(<Register />);
+    // Fill all fields except make email invalid, and fill managerID
+    fillForm({ email: 'invalid-email' });
+    const submitButton = screen.getByRole('button', { name: /register/i });
+    // Submit the form within act to ensure state updates are processed
+    await act(async () => {
+      fireEvent.submit(submitButton.closest('form'));
+    });
+    // Wait for the email validation error to appear
+    const errorMessage = await screen.findByText(
+      /please enter a valid email address/i,
+      {},
+      { timeout: 3000 }
+    );
+    expect(errorMessage).toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import type { RegisterRequest } from '../types/auth';
 function Register() {
   const allowedRoles = ['Admin', 'Manager', 'Employee'];
   const [role, setRole] = useState<string>('');
+  const [managerId, setManagerId] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
@@ -45,7 +46,8 @@ function Register() {
       !lastName ||
       !phoneNumber ||
       !role ||
-      !companyId
+      !companyId ||
+      (role === 'Employee' && !managerId)
     ) {
       setError('All fields are required');
       return;
@@ -85,6 +87,7 @@ function Register() {
         phoneNumber,
         role,
         companyId,
+        ...(role === 'Employee' ? { managerId } : {}),
       };
 
       const response = await AuthService.register(registrationData);
@@ -99,6 +102,7 @@ function Register() {
         setPhoneNumber('');
         setRole('');
         setCompanyId('');
+        setManagerId('');
       } else {
         setError(response.error || 'Registration failed');
       }
@@ -268,6 +272,22 @@ function Register() {
                 ))}
               </select>
             </div>
+            {/* Conditionally render managerID field for Employee role */}
+            {role === 'Employee' && (
+              <div className="mb-3">
+                <label htmlFor="register-managerId" className="form-label">
+                  ManagerID
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  id="register-managerId"
+                  aria-label="managerID"
+                  value={managerId}
+                  onChange={(e) => setManagerId(e.target.value)}
+                />
+              </div>
+            )}
             <div className="mb-3">
               <label htmlFor="register-companyId" className="form-label">
                 Company
@@ -443,6 +463,22 @@ function Register() {
                     <option value="Employee">Employee</option>
                   </select>
                 </div>
+                {/* Conditionally render managerID field for Employee role */}
+                {role === 'Employee' && (
+                  <div className="mb-3">
+                    <label htmlFor="register-managerId" className="form-label">
+                      ManagerID
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="register-managerId"
+                      aria-label="managerID"
+                      value={managerId}
+                      onChange={(e) => setManagerId(e.target.value)}
+                    />
+                  </div>
+                )}
                 <div className="mb-3">
                   <label htmlFor="register-companyId" className="form-label">
                     Company
