@@ -352,7 +352,10 @@ describe('Register Component', () => {
 
     // Submit the form within act to ensure state updates are processed
     await act(async () => {
-      fireEvent.submit(submitButton.closest('form'));
+      const form = submitButton.closest('form');
+      if (form) {
+        fireEvent.submit(form);
+      }
     });
 
     // Wait for the validation error to appear with a longer timeout
@@ -375,7 +378,10 @@ describe('Register Component', () => {
     const submitButton = screen.getByRole('button', { name: /register/i });
     // Submit the form within act to ensure state updates are processed
     await act(async () => {
-      fireEvent.submit(submitButton.closest('form'));
+      const form = submitButton.closest('form');
+      if (form) {
+        fireEvent.submit(form);
+      }
     });
     // Wait for the email validation error to appear
     const errorMessage = await screen.findByText(
