@@ -4,6 +4,8 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/src/common/__mocks__/fileMock.js',
+    '^../services/auth/authService$':
+      '<rootDir>/src/common/__mocks__/services/auth/authService.ts',
   },
   transform: {
     '^.+\\.(ts|tsx)$': [
