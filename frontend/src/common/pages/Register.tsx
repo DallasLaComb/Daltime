@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logoWithName from '../../assets/logo-with-name.png';
 import { AuthService } from '../services/auth/authService';
 import type { RegisterRequest } from '../types/auth';
 
 function Register() {
+  const navigate = useNavigate();
   const allowedRoles = ['Admin', 'Manager', 'Employee'];
   const [role, setRole] = useState<string>('');
   const [managerId, setManagerId] = useState<string>('');
@@ -33,10 +35,21 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submission started');
 
     // Clear previous messages
     setError('');
     setSuccess('');
+    console.log('Validating form with values:', {
+      email,
+      password,
+      firstName,
+      lastName,
+      phoneNumber,
+      role,
+      companyId,
+      managerId,
+    });
 
     // Validate required fields
     if (
@@ -77,6 +90,7 @@ function Register() {
     }
 
     setIsLoading(true);
+    console.log('Starting registration process');
 
     try {
       const registrationData: RegisterRequest = {
@@ -90,19 +104,18 @@ function Register() {
         ...(role === 'Employee' ? { managerId } : {}),
       };
 
+      console.log('Sending registration data:', registrationData);
+
       const response = await AuthService.register(registrationData);
+      console.log('Registration response:', response);
 
       if (response.success) {
-        setSuccess('Registration successful! You can now log in.');
-        // Clear form
-        setEmail('');
-        setPassword('');
-        setFirstName('');
-        setLastName('');
-        setPhoneNumber('');
-        setRole('');
-        setCompanyId('');
-        setManagerId('');
+        console.log('Registration successful, redirecting to login');
+        setSuccess('Registration successful! Redirecting to login...');
+        // Navigate to login page after a brief delay to show the success message
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
       } else {
         setError(response.error || 'Registration failed');
       }
@@ -314,10 +327,21 @@ function Register() {
             </div>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary position-relative"
               disabled={isLoading}
             >
-              {isLoading ? 'Registering...' : 'Register'}
+              {isLoading ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  Registering...
+                </>
+              ) : (
+                'Register'
+              )}
             </button>
             <div className="mt-3 text-center">
               <a
@@ -501,10 +525,21 @@ function Register() {
                 </div>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-primary position-relative"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Registering...' : 'Register'}
+                  {isLoading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Registering...
+                    </>
+                  ) : (
+                    'Register'
+                  )}
                 </button>
                 <div className="mt-3 text-center">
                   <a

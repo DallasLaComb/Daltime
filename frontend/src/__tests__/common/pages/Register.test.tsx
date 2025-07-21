@@ -5,12 +5,23 @@ import {
   waitFor,
   act,
 } from '@testing-library/react';
-// import userEvent from '@testing-library/user-event'; // Uncomment if using userEvent
+import { MemoryRouter } from 'react-router-dom';
 import Register from '../../../common/pages/Register';
+
+// Mock react-router-dom
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 
 describe('Register Component', () => {
   const setup = () => {
-    render(<Register />);
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
   };
 
   it('renders all required input fields', () => {
@@ -57,7 +68,11 @@ describe('Register Component', () => {
 
   describe('Min and Max Length validation', () => {
     const setup = () => {
-      render(<Register />);
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>
+      );
     };
     it('Maximum length for email is 255 characters', () => {
       setup();
@@ -101,7 +116,11 @@ describe('Register Component', () => {
 
   describe('Styling requirements', () => {
     const setup = () => {
-      render(<Register />);
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>
+      );
     };
     it('renders the form centered horizontally on the page', () => {
       setup();
@@ -213,36 +232,68 @@ describe('Register Component', () => {
   // Helper to fill the form for Employee role
   const fillForm = (overrides: Partial<Record<string, string>> = {}) => {
     const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
-    const firstNameInput = screen.getByLabelText(/first name/i) as HTMLInputElement;
-    const lastNameInput = screen.getByLabelText(/last name/i) as HTMLInputElement;
-    const phoneNumberInput = screen.getByLabelText(/phone number/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(
+      /password/i
+    ) as HTMLInputElement;
+    const firstNameInput = screen.getByLabelText(
+      /first name/i
+    ) as HTMLInputElement;
+    const lastNameInput = screen.getByLabelText(
+      /last name/i
+    ) as HTMLInputElement;
+    const phoneNumberInput = screen.getByLabelText(
+      /phone number/i
+    ) as HTMLInputElement;
     const roleSelect = screen.getByLabelText(/role/i) as HTMLSelectElement;
-    const companySelect = screen.getByLabelText(/company/i) as HTMLSelectElement;
+    const companySelect = screen.getByLabelText(
+      /company/i
+    ) as HTMLSelectElement;
 
-    fireEvent.change(emailInput, { target: { value: overrides.email ?? 'test@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: overrides.password ?? 'password123' } });
-    fireEvent.change(firstNameInput, { target: { value: overrides.firstName ?? 'John' } });
-    fireEvent.change(lastNameInput, { target: { value: overrides.lastName ?? 'Doe' } });
-    fireEvent.change(phoneNumberInput, { target: { value: overrides.phoneNumber ?? '1234567890' } });
-    fireEvent.change(roleSelect, { target: { value: overrides.role ?? 'Employee' } });
+    fireEvent.change(emailInput, {
+      target: { value: overrides.email ?? 'test@example.com' },
+    });
+    fireEvent.change(passwordInput, {
+      target: { value: overrides.password ?? 'password123' },
+    });
+    fireEvent.change(firstNameInput, {
+      target: { value: overrides.firstName ?? 'John' },
+    });
+    fireEvent.change(lastNameInput, {
+      target: { value: overrides.lastName ?? 'Doe' },
+    });
+    fireEvent.change(phoneNumberInput, {
+      target: { value: overrides.phoneNumber ?? '1234567890' },
+    });
+    fireEvent.change(roleSelect, {
+      target: { value: overrides.role ?? 'Employee' },
+    });
     if (overrides.role === 'Manager' || overrides.role === 'Admin') {
       // No managerID field for these roles
     } else {
       // Wait for managerID field to appear if Employee
-      const managerIdInput = screen.queryByLabelText(/managerid/i) as HTMLInputElement | null;
+      const managerIdInput = screen.queryByLabelText(
+        /managerid/i
+      ) as HTMLInputElement | null;
       if (managerIdInput) {
-        fireEvent.change(managerIdInput, { target: { value: overrides.managerId ?? 'manager-123' } });
+        fireEvent.change(managerIdInput, {
+          target: { value: overrides.managerId ?? 'manager-123' },
+        });
       }
     }
     fireEvent.change(companySelect, {
-      target: { value: overrides.companyId ?? '0433bb9b-fd98-459a-8b2e-b48e854ace17' },
+      target: {
+        value: overrides.companyId ?? '0433bb9b-fd98-459a-8b2e-b48e854ace17',
+      },
     });
   };
 
   describe('Conditional managerID field', () => {
     beforeEach(() => {
-      render(<Register />);
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>
+      );
     });
 
     it('shows the managerID field only when role is Employee', () => {
@@ -276,7 +327,11 @@ describe('Register Component', () => {
   });
 
   it('submits the form with valid data', async () => {
-    render(<Register />);
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
     fillForm();
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -287,7 +342,11 @@ describe('Register Component', () => {
   });
 
   it('shows validation error for empty fields', async () => {
-    render(<Register />);
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
 
     const submitButton = screen.getByRole('button', { name: /register/i });
 
@@ -306,7 +365,11 @@ describe('Register Component', () => {
   });
 
   it('shows validation error for invalid email', async () => {
-    render(<Register />);
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
     // Fill all fields except make email invalid, and fill managerID
     fillForm({ email: 'invalid-email' });
     const submitButton = screen.getByRole('button', { name: /register/i });
@@ -321,5 +384,44 @@ describe('Register Component', () => {
       { timeout: 3000 }
     );
     expect(errorMessage).toBeInTheDocument();
+  });
+
+  it('redirects to login page after successful registration', async () => {
+    // Clear any previous mock calls
+    mockNavigate.mockClear();
+
+    // Mock the timer functions
+    jest.useFakeTimers();
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    fillForm();
+    const submitButton = screen.getByRole('button', { name: /register/i });
+
+    // Trigger the submit
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+
+    // Wait for success message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/registration successful/i)).toBeInTheDocument();
+    });
+
+    // Run the timeout
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    // Verify navigation occurred
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+
+    // Cleanup
+    jest.useRealTimers();
+    jest.resetModules();
   });
 });
