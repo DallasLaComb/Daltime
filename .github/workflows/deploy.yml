@@ -109,4 +109,5 @@ jobs:
             --parameter-overrides \
               SupabaseUrl=${{ secrets.SUPABASE_URL }} \
               SupabaseAnonKey=${{ secrets.SUPABASE_ANON_KEY }} \
-              SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }}
+              SupabaseServiceRole=${{ secrets.SUPABASE_SERVICE_ROLE }} \
+              SupabaseDbUrl=${{ secrets.SUPABASE_DB_URL }}
