@@ -7,8 +7,7 @@ export class AuthService {
   static async register(userData: RegisterRequest): Promise<ApiResponse<User>> {
     try {
       // Get API URL from environment variables
-      const apiUrl =
-        import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+      const apiUrl = process.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
       const response = await fetch(`${apiUrl}/auth/register`, {
         method: 'POST',

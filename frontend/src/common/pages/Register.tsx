@@ -20,7 +20,6 @@ function Register() {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
-  // Company options with display names and their corresponding IDs
   const companies = [
     { id: '0433bb9b-fd98-459a-8b2e-b48e854ace17', name: 'Meriden YMCA' },
     { id: '29d2410a-db42-433f-8e00-649f0efb97bd', name: 'Wallingford YMCA' },
@@ -35,23 +34,9 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submission started');
-
-    // Clear previous messages
     setError('');
     setSuccess('');
-    console.log('Validating form with values:', {
-      email,
-      password,
-      firstName,
-      lastName,
-      phoneNumber,
-      role,
-      companyId,
-      managerId,
-    });
 
-    // Validate required fields
     if (
       !email ||
       !password ||
@@ -65,32 +50,29 @@ function Register() {
       setError('All fields are required');
       return;
     }
-    // Only allow valid roles
+
     if (!allowedRoles.includes(role)) {
       setError('Invalid role selected');
       return;
     }
-    // Only allow valid companies
+
     if (!companies.some((c) => c.id === companyId)) {
       setError('Invalid company selected');
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
 
-    // Validate phone number
     if (phoneNumber.length !== 10) {
       setError('Phone number must be exactly 10 digits');
       return;
     }
 
     setIsLoading(true);
-    console.log('Starting registration process');
 
     try {
       const registrationData: RegisterRequest = {
@@ -104,15 +86,10 @@ function Register() {
         ...(role === 'Employee' ? { managerId } : {}),
       };
 
-      console.log('Sending registration data:', registrationData);
-
       const response = await AuthService.register(registrationData);
-      console.log('Registration response:', response);
 
       if (response.success) {
-        console.log('Registration successful, redirecting to login');
         setSuccess('Registration successful! Redirecting to login...');
-        // Navigate to login page after a brief delay to show the success message
         setTimeout(() => {
           navigate('/login');
         }, 1500);
@@ -121,24 +98,161 @@ function Register() {
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
-      console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const renderRequiredNote = (
+    <p className="text-muted">
+      <span style={{ color: 'red' }}>*</span> All fields are required
+    </p>
+  );
+
+  const renderFormFields = () => (
+    <>
+      <div className="mb-3">
+        <label htmlFor="register-email" className="form-label">
+          Email <span style={{ color: 'red' }}>*</span>
+        </label>
+        <input
+          type="email"
+          className="form-control"
+          id="register-email"
+          aria-label="Email"
+          value={email}
+          maxLength={255}
+          onChange={(e) => setEmail(e.target.value.slice(0, 255))}
+          required
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="register-password" className="form-label">
+          Password <span style={{ color: 'red' }}>*</span>
+        </label>
+        <input
+          type="password"
+          className="form-control"
+          id="register-password"
+          aria-label="Password"
+          value={password}
+          maxLength={64}
+          onChange={(e) => setPassword(e.target.value.slice(0, 64))}
+          required
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="register-firstName" className="form-label">
+          First Name <span style={{ color: 'red' }}>*</span>
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          id="register-firstName"
+          aria-label="First Name"
+          value={firstName}
+          maxLength={50}
+          onChange={(e) => setFirstName(e.target.value.slice(0, 50))}
+          required
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="register-lastName" className="form-label">
+          Last Name <span style={{ color: 'red' }}>*</span>
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          id="register-lastName"
+          aria-label="Last Name"
+          value={lastName}
+          maxLength={50}
+          onChange={(e) => setLastName(e.target.value.slice(0, 50))}
+          required
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="register-phoneNumber" className="form-label">
+          Phone Number <span style={{ color: 'red' }}>*</span>
+        </label>
+        <input
+          type="tel"
+          className="form-control"
+          id="register-phoneNumber"
+          aria-label="Phone Number"
+          value={phoneNumber}
+          maxLength={10}
+          onChange={(e) =>
+            setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
+          }
+          required
+        />
+      </div>
+      <div className="mb-3">
+        <label htmlFor="register-role" className="form-label">
+          Role <span style={{ color: 'red' }}>*</span>
+        </label>
+        <select
+          className="form-control"
+          id="register-role"
+          aria-label="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          required
+        >
+          <option value="">Select a role</option>
+          {allowedRoles.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
+      {role === 'Employee' && (
+        <div className="mb-3">
+          <label htmlFor="register-managerId" className="form-label">
+            ManagerID <span style={{ color: 'red' }}>*</span>
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="register-managerId"
+            aria-label="managerID"
+            value={managerId}
+            onChange={(e) => setManagerId(e.target.value)}
+            required
+          />
+        </div>
+      )}
+      <div className="mb-3">
+        <label htmlFor="register-companyId" className="form-label">
+          Company <span style={{ color: 'red' }}>*</span>
+        </label>
+        <select
+          className="form-control"
+          id="register-companyId"
+          aria-label="Company"
+          value={companyId}
+          onChange={(e) => setCompanyId(e.target.value)}
+          required
+        >
+          <option value="">Select a company</option>
+          {companies.map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-vh-100 w-100">
-      {/* Logo at the top left */}
       {!isMobile && (
         <div
           className="d-none d-md-flex justify-content-start"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-          }}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%' }}
         >
           <img
             src={logoWithName}
@@ -156,17 +270,12 @@ function Register() {
           <form
             role="form"
             className="bg-white h-100 w-100 p-4 border-0 rounded d-flex flex-column justify-content-center"
-            style={{
-              boxShadow: 'none',
-              border: 'none',
-            }}
+            style={{ boxShadow: 'none', border: 'none' }}
             onSubmit={handleSubmit}
           >
             <h1>
               Register for <span className="text-primary">Daltime</span>
             </h1>
-
-            {/* Error/Success Messages */}
             <div
               data-testid="register-error-message"
               role="alert"
@@ -185,146 +294,7 @@ function Register() {
             >
               {success}
             </div>
-            <div className="mb-3">
-              <label htmlFor="register-email" className="form-label">
-                Email
-              </label>
-              <input
-                type="email"
-                className="form-control"
-                id="register-email"
-                aria-label="Email"
-                value={email}
-                maxLength={255}
-                onChange={(e) => setEmail(e.target.value.slice(0, 255))}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="register-password" className="form-label">
-                Password
-              </label>
-              <input
-                type="password"
-                className="form-control"
-                id="register-password"
-                aria-label="Password"
-                value={password}
-                maxLength={64}
-                onChange={(e) => setPassword(e.target.value.slice(0, 64))}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="register-firstName" className="form-label">
-                First Name
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                id="register-firstName"
-                aria-label="First Name"
-                value={firstName}
-                maxLength={50}
-                onChange={(e) => setFirstName(e.target.value.slice(0, 50))}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="register-lastName" className="form-label">
-                Last Name
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                id="register-lastName"
-                aria-label="Last Name"
-                value={lastName}
-                maxLength={50}
-                onChange={(e) => setLastName(e.target.value.slice(0, 50))}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="register-phoneNumber" className="form-label">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                className="form-control"
-                id="register-phoneNumber"
-                aria-label="Phone Number"
-                value={phoneNumber}
-                maxLength={10}
-                onChange={(e) =>
-                  setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-                }
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="register-role" className="form-label">
-                Role
-              </label>
-              <select
-                className="form-control"
-                id="register-role"
-                aria-label="Role"
-                value={role}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (allowedRoles.includes(val) || val === '') setRole(val);
-                }}
-                required
-              >
-                <option value="">Select a role</option>
-                {allowedRoles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Conditionally render managerID field for Employee role */}
-            {role === 'Employee' && (
-              <div className="mb-3">
-                <label htmlFor="register-managerId" className="form-label">
-                  ManagerID
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="register-managerId"
-                  aria-label="managerID"
-                  value={managerId}
-                  onChange={(e) => setManagerId(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="mb-3">
-              <label htmlFor="register-companyId" className="form-label">
-                Company
-              </label>
-              <select
-                className="form-control"
-                id="register-companyId"
-                aria-label="Company"
-                value={companyId}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === '' || companies.some((c) => c.id === val))
-                    setCompanyId(val);
-                }}
-                required
-              >
-                <option value="">Select a company</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {renderFormFields()}
             <button
               type="submit"
               className="btn btn-primary position-relative"
@@ -370,8 +340,6 @@ function Register() {
                 <h1>
                   Register for <span className="text-primary">Daltime</span>
                 </h1>
-
-                {/* Error/Success Messages */}
                 <div
                   data-testid="register-error-message"
                   role="alert"
@@ -390,139 +358,9 @@ function Register() {
                 >
                   {success}
                 </div>
-                <div className="mb-3">
-                  <label htmlFor="register-email" className="form-label">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="register-email"
-                    aria-label="Email"
-                    value={email}
-                    maxLength={255}
-                    onChange={(e) => setEmail(e.target.value.slice(0, 255))}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="register-password" className="form-label">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="register-password"
-                    aria-label="Password"
-                    value={password}
-                    maxLength={64}
-                    onChange={(e) => setPassword(e.target.value.slice(0, 64))}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="register-firstName" className="form-label">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="register-firstName"
-                    aria-label="First Name"
-                    value={firstName}
-                    maxLength={50}
-                    onChange={(e) => setFirstName(e.target.value.slice(0, 50))}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="register-lastName" className="form-label">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="register-lastName"
-                    aria-label="Last Name"
-                    value={lastName}
-                    maxLength={50}
-                    onChange={(e) => setLastName(e.target.value.slice(0, 50))}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="register-phoneNumber" className="form-label">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="form-control"
-                    id="register-phoneNumber"
-                    aria-label="Phone Number"
-                    value={phoneNumber}
-                    maxLength={10}
-                    onChange={(e) =>
-                      setPhoneNumber(
-                        e.target.value.replace(/\D/g, '').slice(0, 10)
-                      )
-                    }
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="register-role" className="form-label">
-                    Role
-                  </label>
-                  <select
-                    className="form-control"
-                    id="register-role"
-                    aria-label="Role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a role</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Employee">Employee</option>
-                  </select>
-                </div>
-                {/* Conditionally render managerID field for Employee role */}
-                {role === 'Employee' && (
-                  <div className="mb-3">
-                    <label htmlFor="register-managerId" className="form-label">
-                      ManagerID
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="register-managerId"
-                      aria-label="managerID"
-                      value={managerId}
-                      onChange={(e) => setManagerId(e.target.value)}
-                    />
-                  </div>
-                )}
-                <div className="mb-3">
-                  <label htmlFor="register-companyId" className="form-label">
-                    Company
-                  </label>
-                  <select
-                    className="form-control"
-                    id="register-companyId"
-                    aria-label="Company"
-                    value={companyId}
-                    onChange={(e) => setCompanyId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a company</option>
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {renderFormFields()}
+                {renderRequiredNote}
+
                 <button
                   type="submit"
                   className="btn btn-primary position-relative"
