@@ -22,25 +22,48 @@ const Login = () => {
     setErrorMsg('');
 
     try {
-      const response = await fetch(`${process.env.VITE_API_URL}/auth/login`, {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL;
+      if (!apiUrl) {
+        setErrorMsg(
+          'API URL not configured. Please check your environment setup.'
+        );
+        return;
+      }
+
+      const response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        setErrorMsg('Invalid response from server');
+        return;
+      }
 
       if (!response.ok) {
         setErrorMsg(result.message || 'Login failed');
-        setLoading(false);
+        return;
+      }
+
+      if (!result.data?.user?.role) {
+        setErrorMsg('Invalid user data received');
         return;
       }
 
       const { user } = result.data;
       const role = user.role.toLowerCase();
       navigate(`/${role}/dashboard`);
-    } catch {
-      setErrorMsg('Unexpected error occurred. Please try again.');
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrorMsg(
+        error instanceof Error
+          ? error.message
+          : 'Network error occurred. Please check your connection.'
+      );
     } finally {
       setLoading(false);
     }
