@@ -13,11 +13,14 @@ describe('Login Page', () => {
   it('logs in with valid credentials', () => {
     cy.visit('/login');
 
-    cy.get('#login-email').type('dallasmanager@gmail.com');
-    cy.get('#login-password').type('yourPasswordHere'); // use a valid test password
+    cy.get('#login-email').type(Cypress.env('TEST_EMAIL'));
+    cy.get('#login-password').type(Cypress.env('TEST_PASSWORD'));
     cy.get('button[type="submit"]').click();
 
-    // Adjust redirect check if needed (e.g., /manager/dashboard or /employee/dashboard)
-    cy.url().should('include', '/dashboard');
+    // Wait for the request to complete and navigation to happen
+    cy.wait(2000);
+
+    // Check for manager dashboard redirect
+    cy.url().should('include', '/manager/dashboard');
   });
 });
