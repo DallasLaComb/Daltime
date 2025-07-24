@@ -39,6 +39,7 @@ const Login = () => {
       let result;
       try {
         result = await response.json();
+        console.log('Login result:', result);
       } catch (e) {
         setErrorMsg('Invalid response from server');
         return;
@@ -54,7 +55,15 @@ const Login = () => {
         return;
       }
 
-      const { user } = result.data;
+      const { user, access_token } = result.data;
+
+      if (!access_token) {
+        setErrorMsg('Missing access token in login response');
+        return;
+      }
+
+      localStorage.setItem('authToken', access_token); // <-- Store the token
+
       const role = user.role.toLowerCase();
       navigate(`/${role}/dashboard`);
     } catch (error) {

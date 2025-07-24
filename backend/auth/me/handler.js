@@ -13,6 +13,7 @@ exports.handler = async (event) => {
       event.headers?.authorization || event.headers?.Authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('DEBUG: Missing or malformed Authorization header');
       return responses.unauthorized('Authorization token required');
     }
 
@@ -24,8 +25,25 @@ exports.handler = async (event) => {
       error: userError,
     } = await supabase.auth.getUser(token);
 
+    console.log('DEBUG getUser result:', { user, userError });
+
     if (userError || !user) {
+      console.log('DEBUG unauthorized triggered:', { user, userError });
       return responses.unauthorized('Invalid or expired token');
+    }
+
+    // Fetch the user's role from the appuser table
+    const { data: roleData, error: roleError } = await supabase
+      .from('appuser')
+      .select('role')
+      .eq('userid', user.id)
+      .single();
+
+    console.log('DEBUG role query result:', { roleData, roleError });
+
+    if (roleError) {
+      console.error('Error fetching user role:', roleError);
+      return responses.serverError('Failed to retrieve user role');
     }
 
     return responses.success(
@@ -37,6 +55,7 @@ exports.handler = async (event) => {
           created_at: user.created_at,
           updated_at: user.updated_at,
           user_metadata: user.user_metadata,
+          role: roleData.role,
         },
       },
       'User retrieved successfully'

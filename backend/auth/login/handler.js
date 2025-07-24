@@ -42,11 +42,15 @@ exports.handler = async (event) => {
 
     return responses.success(
       {
+        access_token: authData.session.access_token,
         user: { ...authData.user, role: userData.role },
-        session: authData.session,
       },
       'Login successful'
     );
+    console.log('Login response payload:', {
+      access_token: authData.session.access_token,
+      user: { ...authData.user, role: userData.role },
+    });
   } catch (err) {
     console.error('Login error:', err);
     return responses.serverError(err.message);

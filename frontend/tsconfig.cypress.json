@@ -7,5 +7,5 @@
     "esModuleInterop": true,
     "types": ["cypress"]
   },
-  "include": ["cypress.config.ts", "cypress/**/*.ts"]
+  "include": ["cypress/**/*.ts"]
 }

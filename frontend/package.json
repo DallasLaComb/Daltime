@@ -12,8 +12,8 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "lint": "eslint .",
     "preview": "vite preview",
-    "e2e": "TS_NODE_PROJECT=tsconfig.cypress.json cypress open",
-    "e2e:run": "cypress run"
+    "e2e": "cypress open --config-file cypress.config.cjs",
+    "e2e:run": "cypress run --config-file cypress.config.cjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",

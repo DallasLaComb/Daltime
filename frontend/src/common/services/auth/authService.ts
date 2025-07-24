@@ -37,4 +37,36 @@ export class AuthService {
       };
     }
   }
+  static async getUser(): Promise<ApiResponse<User>> {
+    try {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL;
+      const token = localStorage.getItem('authToken'); // Adjust if stored differently
+
+      const response = await fetch(`${apiUrl}/auth/me`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.message || 'Failed to retrieve user',
+          error: data.error || 'Unknown error',
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Get user error:', error);
+      return {
+        success: false,
+        message: 'Network error occurred',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }
