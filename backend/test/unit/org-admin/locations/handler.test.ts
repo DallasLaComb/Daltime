@@ -5,9 +5,6 @@ import type {
 } from 'aws-lambda';
 
 vi.mock('../../../../src/functions/org-admin/locations/service.js', () => ({
-  ValidationError: class ValidationError extends Error {},
-  ForbiddenError: class ForbiddenError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
   getLocations: vi.fn(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
@@ -15,10 +12,8 @@ vi.mock('../../../../src/functions/org-admin/locations/service.js', () => ({
 }));
 
 import { handler } from '../../../../src/functions/org-admin/locations/handler.js';
+import { ValidationError, ForbiddenError, NotFoundError } from '../../../../src/functions/shared/errors.js';
 import {
-  ValidationError,
-  ForbiddenError,
-  NotFoundError,
   getLocations,
   createLocation,
   updateLocation,

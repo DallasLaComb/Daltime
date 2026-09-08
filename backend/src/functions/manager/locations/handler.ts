@@ -1,18 +1,16 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { getCallerSub } from '../../shared/auth.js';
-import {
-  ok,
-  badRequest,
-  forbidden,
-  internalError,
-  setRequestOrigin,
-} from '../../shared/response.js';
-import { ForbiddenError, getLocations } from './service.js';
+import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
+import { mapHandlerError } from '../../shared/errors.js';
+import { getLocations } from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    setRequestOrigin(event.headers?.['origin']);
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
@@ -25,8 +23,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
-    console.error('Unhandled error in manager locations handler:', err);
-    return internalError('An unexpected error occurred');
+    return mapHandlerError(err, 'manager locations handler');
   }
 };

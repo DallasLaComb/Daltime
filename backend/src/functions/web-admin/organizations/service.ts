@@ -7,7 +7,7 @@ import type {
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-export class ValidationError extends Error {}
+import { ValidationError } from '../../shared/errors.js';
 
 export async function listOrganizations() {
   const items = await db.listOrganizations();
@@ -19,7 +19,11 @@ export async function getOrganization(orgId: string) {
   return item ? stripKeys(item) : null;
 }
 
-export async function createOrganization(body: CreateOrganizationBody) {
+/**
+ * Create a new organization and stamp `modified_by_web_admin_id` on the item
+ * so the creating WebAdmin is recorded for audit purposes.
+ */
+export async function createOrganization(body: CreateOrganizationBody, webAdminId: string) {
   if (!body.name?.trim()) throw new ValidationError('name is required');
   if (!body.address?.trim()) throw new ValidationError('address is required');
 
@@ -38,27 +42,46 @@ export async function createOrganization(body: CreateOrganizationBody) {
     org_admin_count: 0,
   };
 
-  await db.createOrganization(org);
+  await db.createOrganization(org, webAdminId);
   return stripKeys(org);
 }
 
-export async function updateOrganization(orgId: string, body: UpdateOrganizationBody) {
+/**
+ * Update an existing organization's name and/or address, stamping
+ * `modified_by_web_admin_id` on the item for audit purposes.
+ */
+export async function updateOrganization(
+  orgId: string,
+  body: UpdateOrganizationBody,
+  webAdminId: string,
+) {
   const existing = await db.getOrganizationById(orgId);
   if (!existing) return null;
 
   const now = new Date().toISOString();
-  const updated = await db.updateOrganization(orgId, {
-    name: body.name?.trim() ?? (existing['name'] as string),
-    address: body.address?.trim() ?? (existing['address'] as string),
-    updated_at: now,
-  });
+  const updated = await db.updateOrganization(
+    orgId,
+    {
+      name: body.name?.trim() ?? (existing['name'] as string),
+      address: body.address?.trim() ?? (existing['address'] as string),
+      updated_at: now,
+    },
+    webAdminId,
+  );
 
   return stripKeys(updated);
 }
 
-export async function deleteOrganization(orgId: string) {
+/**
+ * Delete (hard delete) an organization by its ID.
+ * Returns false if the org does not exist, true on successful deletion.
+ * Stamps `modified_by_web_admin_id` on the delete operation is not applicable
+ * for a hard delete (the item is removed), so webAdminId is accepted for
+ * future use / soft-delete migration consistency.
+ */
+export async function deleteOrganization(orgId: string, webAdminId: string) {
   const existing = await db.getOrganizationById(orgId);
   if (!existing) return false;
-  await db.deleteOrganization(orgId);
+  await db.deleteOrganization(orgId, webAdminId);
   return true;
 }

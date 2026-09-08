@@ -5,20 +5,13 @@ import {
   QueryCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, GSI1_INDEX, TABLE_NAME } from '../../shared/dynamo.js';
+import { docClient, GSI1_INDEX, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
 import type { ShiftNeeded } from '../../shared/models/manager/shift-needed.model.js';
 
 export async function getCallerLookup(
   userId: string,
 ): Promise<{ org_id: string; manager_id: string } | null> {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: 'METADATA' },
-    }),
-  );
-  if (!result.Item) return null;
-  return result.Item as { org_id: string; manager_id: string };
+  return getMetadataRecord(userId);
 }
 
 export async function listShifts(managerId: string, month: string): Promise<ShiftNeeded[]> {

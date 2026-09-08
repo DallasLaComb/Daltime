@@ -8,8 +8,7 @@ import type {
 } from '../../shared/models/employee/availability.model.js';
 import * as db from './db.js';
 
-export class ValidationError extends Error {}
-export class ForbiddenError extends Error {}
+import { ValidationError, ForbiddenError } from '../../shared/errors.js';
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
   'monday',
@@ -53,6 +52,26 @@ function validateSlots(slots: unknown, dayKey: string): TimeSlot[] {
   });
 }
 
+function validateDayEntry(
+  available: unknown,
+  slots: unknown,
+  max_shifts: unknown,
+  dayKey: string,
+): DayAvailability {
+  if (typeof available !== 'boolean') {
+    throw new ValidationError(`schedule.${dayKey}.available must be a boolean`);
+  }
+  if (!available) return { available: false };
+  const validSlots = validateSlots(slots, dayKey);
+  const shiftsNum = typeof max_shifts === 'number' ? max_shifts : Number(max_shifts);
+  if (!Number.isInteger(shiftsNum) || shiftsNum < 1 || shiftsNum > validSlots.length) {
+    throw new ValidationError(
+      `schedule.${dayKey}.max_shifts must be an integer between 1 and ${validSlots.length}`,
+    );
+  }
+  return { available: true, slots: validSlots, max_shifts: shiftsNum };
+}
+
 function validateSchedule(schedule: unknown): WeeklySchedule {
   if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) {
     throw new ValidationError('schedule must be an object');
@@ -66,23 +85,7 @@ function validateSchedule(schedule: unknown): WeeklySchedule {
       throw new ValidationError(`schedule.${day} must be an object`);
     }
     const { available, slots, max_shifts } = entry as Record<string, unknown>;
-
-    if (typeof available !== 'boolean') {
-      throw new ValidationError(`schedule.${day}.available must be a boolean`);
-    }
-
-    if (available) {
-      const validSlots = validateSlots(slots, day);
-      const shiftsNum = typeof max_shifts === 'number' ? max_shifts : Number(max_shifts);
-      if (!Number.isInteger(shiftsNum) || shiftsNum < 1 || shiftsNum > validSlots.length) {
-        throw new ValidationError(
-          `schedule.${day}.max_shifts must be an integer between 1 and ${validSlots.length}`,
-        );
-      }
-      validated[day] = { available: true, slots: validSlots, max_shifts: shiftsNum };
-    } else {
-      validated[day] = { available: false };
-    }
+    validated[day] = validateDayEntry(available, slots, max_shifts, day);
   }
 
   return validated as WeeklySchedule;
@@ -95,7 +98,7 @@ function migrateDay(raw: Record<string, unknown>): DayAvailability {
   if (typeof raw['from'] === 'string' && typeof raw['to'] === 'string' && !raw['slots']) {
     return {
       available: true,
-      slots: [{ from: raw['from'] as string, to: raw['to'] as string }],
+      slots: [{ from: raw['from'], to: raw['to'] }],
       max_shifts: 1,
     };
   }

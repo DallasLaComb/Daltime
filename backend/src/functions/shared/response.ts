@@ -15,7 +15,7 @@ function corsHeaders(): Record<string, string> {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': requestOrigin,
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   };
 }
 
@@ -47,6 +47,25 @@ export function notFound(message = 'Not found'): APIGatewayProxyResultV2 {
   return { statusCode: 404, headers: corsHeaders(), body: JSON.stringify({ error: message }) };
 }
 
+export function methodNotAllowed(method: string): APIGatewayProxyResultV2 {
+  return {
+    statusCode: 405,
+    headers: corsHeaders(),
+    body: JSON.stringify({ error: `Method Not Allowed: ${method}` }),
+  };
+}
+
 export function internalError(message = 'Internal server error'): APIGatewayProxyResultV2 {
   return { statusCode: 500, headers: corsHeaders(), body: JSON.stringify({ error: message }) };
+}
+
+type ParseBodyResult<T> = { ok: true; data: T } | { ok: false; response: APIGatewayProxyResultV2 };
+
+export function parseBody<T>(rawBody: string | undefined): ParseBodyResult<T> {
+  if (!rawBody) return { ok: false, response: badRequest('Request body is required') };
+  try {
+    return { ok: true, data: JSON.parse(rawBody) as T };
+  } catch {
+    return { ok: false, response: badRequest('Invalid JSON body') };
+  }
 }

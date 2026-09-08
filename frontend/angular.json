@@ -41,11 +41,13 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "styles": ["src/styles.css"]
             },
             "dev": {
               "index": { "input": "src/index.dev.html", "output": "index.html" },
               "outputHashing": "all",
+              "styles": ["src/styles.css"],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -56,6 +58,7 @@
             "qa": {
               "index": { "input": "src/index.qa.html", "output": "index.html" },
               "outputHashing": "all",
+              "styles": ["src/styles.css"],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -65,6 +68,7 @@
             },
             "main": {
               "outputHashing": "all",
+              "styles": ["src/styles.css"],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -122,11 +126,7 @@
               "watch": false,
               "coverage": true,
               "coverageReporters": ["lcov", "text"],
-              "coverageExclude": [
-                "src/environments/**",
-                "src/main.ts",
-                "**/*.spec.ts"
-              ]
+              "coverageExclude": ["src/environments/**", "src/main.ts", "**/*.spec.ts"]
             }
           }
         }

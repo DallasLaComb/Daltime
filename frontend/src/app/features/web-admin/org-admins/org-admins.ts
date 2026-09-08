@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { USER_STATUS_COLOR_MAP, getUserStatusLabel } from '../../../core/utils/user-status';
 import { forkJoin } from 'rxjs';
 import {
   CrudPageComponent,
@@ -9,6 +10,7 @@ import {
   StatusBadgeComponent,
   ConfirmationModalComponent,
   ButtonComponent,
+  PasswordInputComponent,
 } from '@common-daltime';
 import type { ColumnDef } from '@common-daltime';
 import { OrgAdminsService } from '../../../services/org-admins.service';
@@ -26,6 +28,7 @@ import type { OrgAdminUserResponse } from '../../../core/models/org-admin-user.m
     StatusBadgeComponent,
     ConfirmationModalComponent,
     ButtonComponent,
+    PasswordInputComponent,
   ],
   templateUrl: './org-admins.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,7 +57,6 @@ export class OrgAdminsComponent {
   readonly formName = signal('');
   readonly formEmail = signal('');
   readonly formPassword = signal('');
-  readonly showPassword = signal(false);
   readonly formSubmitted = signal(false);
 
   readonly columns: ColumnDef[] = [
@@ -67,11 +69,7 @@ export class OrgAdminsComponent {
 
   readonly trackById = (_index: number, admin: OrgAdminUserResponse): string => admin.user_id;
 
-  readonly statusColorMap: Record<string, string> = {
-    CONFIRMED: 'badge-dt-success',
-    DISABLED: 'badge-dt-secondary',
-    FORCE_CHANGE_PASSWORD: 'badge-dt-warning',
-  };
+  readonly statusColorMap = USER_STATUS_COLOR_MAP;
 
   constructor() {
     this.load();
@@ -97,17 +95,12 @@ export class OrgAdminsComponent {
     });
   }
 
-  statusLabel(status: string): string {
-    if (status === 'CONFIRMED') return 'Active';
-    if (status === 'DISABLED') return 'Disabled';
-    return 'Pending';
-  }
+  readonly statusLabel = getUserStatusLabel;
 
   openRegisterModal(): void {
     this.formName.set('');
     this.formEmail.set('');
     this.formPassword.set('');
-    this.showPassword.set(false);
     this.formSubmitted.set(false);
     this.modalError.set(null);
     this.showModal.set(true);
@@ -115,10 +108,6 @@ export class OrgAdminsComponent {
 
   closeModal(): void {
     this.showModal.set(false);
-  }
-
-  togglePassword(): void {
-    this.showPassword.update((v) => !v);
   }
 
   register(): void {

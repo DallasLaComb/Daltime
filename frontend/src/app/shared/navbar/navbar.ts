@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth';
 import { ImpersonationService } from '../../core/services/impersonation.service';
 import { ImpersonationBannerComponent } from '../components/impersonation-banner/impersonation-banner';
 import { ROLE_DASHBOARD_MAP } from '../../core/auth/user-role.model';
+import { NotificationBellComponent } from '../notifications/notification-bell';
 
 @Component({
   selector: 'app-navbar',
@@ -14,6 +15,7 @@ import { ROLE_DASHBOARD_MAP } from '../../core/auth/user-role.model';
     ButtonComponent,
     ConfirmationModalComponent,
     ImpersonationBannerComponent,
+    NotificationBellComponent,
   ],
   templateUrl: './navbar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +45,18 @@ export class Navbar {
   protected readonly profileRoute = computed(() => {
     const r = this.effectiveRole();
     return r ? `${ROLE_DASHBOARD_MAP[r]}/profile` : '/';
+  });
+
+  /**
+   * Combines the authenticated user's given name and family name into a single
+   * display string. Returns an empty string when neither attribute has been set
+   * (e.g. before the Cognito GetUser call completes), which hides the element
+   * via the @if guard in the template.
+   */
+  protected readonly displayName = computed(() => {
+    const first = this.authService.firstName();
+    const last = this.authService.lastName();
+    return `${first} ${last}`.trim();
   });
 
   protected endImpersonation(): void {

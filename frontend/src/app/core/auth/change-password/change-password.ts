@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal, type OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ButtonComponent } from '@common-daltime';
+import { ButtonComponent, PasswordInputComponent } from '@common-daltime';
 import { AuthService } from '../auth';
 
 @Component({
   selector: 'app-change-password',
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, PasswordInputComponent],
   templateUrl: './change-password.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -15,7 +15,6 @@ export class ChangePasswordComponent implements OnInit {
 
   readonly newPassword = signal('');
   readonly confirmPassword = signal('');
-  readonly showPassword = signal(false);
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
@@ -26,12 +25,12 @@ export class ChangePasswordComponent implements OnInit {
     }
   }
 
-  togglePassword(): void {
-    this.showPassword.update((v) => !v);
-  }
-
   get passwordsMismatch(): boolean {
-    return this.submitted() && this.newPassword().trim().length > 0 && this.newPassword() !== this.confirmPassword();
+    return (
+      this.submitted() &&
+      this.newPassword().trim().length > 0 &&
+      this.newPassword() !== this.confirmPassword()
+    );
   }
 
   async onSubmit(): Promise<void> {

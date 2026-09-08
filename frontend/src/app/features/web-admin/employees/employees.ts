@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { USER_STATUS_COLOR_MAP, getUserStatusLabel } from '../../../core/utils/user-status';
 import {
   CrudPageComponent,
   DataTableComponent,
@@ -55,11 +56,7 @@ export class WebAdminEmployeesComponent {
 
   readonly trackById = (_index: number, emp: WebAdminEmployeeResponse): string => emp.employee_id;
 
-  readonly statusColorMap: Record<string, string> = {
-    CONFIRMED: 'badge-dt-success',
-    DISABLED: 'badge-dt-secondary',
-    FORCE_CHANGE_PASSWORD: 'badge-dt-warning',
-  };
+  readonly statusColorMap = USER_STATUS_COLOR_MAP;
 
   constructor() {
     this.load();
@@ -81,11 +78,7 @@ export class WebAdminEmployeesComponent {
     });
   }
 
-  statusLabel(status: string): string {
-    if (status === 'CONFIRMED') return 'Active';
-    if (status === 'DISABLED') return 'Disabled';
-    return 'Pending';
-  }
+  readonly statusLabel = getUserStatusLabel;
 
   onSearch(q: string): void {
     this.query.set(q);

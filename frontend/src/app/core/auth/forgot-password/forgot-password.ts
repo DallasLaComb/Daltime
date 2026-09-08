@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ButtonComponent } from '@common-daltime';
+import { ButtonComponent, PasswordInputComponent } from '@common-daltime';
 import { AuthService } from '../auth';
 
 @Component({
   selector: 'app-forgot-password',
-  imports: [RouterLink, ButtonComponent],
+  imports: [RouterLink, ButtonComponent, PasswordInputComponent],
   templateUrl: './forgot-password.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -17,17 +17,16 @@ export class ForgotPasswordComponent {
   readonly code = signal('');
   readonly newPassword = signal('');
   readonly confirmPassword = signal('');
-  readonly showPassword = signal(false);
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
 
   get passwordsMismatch(): boolean {
-    return this.submitted() && this.newPassword().trim().length > 0 && this.newPassword() !== this.confirmPassword();
-  }
-
-  togglePassword(): void {
-    this.showPassword.update((v) => !v);
+    return (
+      this.submitted() &&
+      this.newPassword().trim().length > 0 &&
+      this.newPassword() !== this.confirmPassword()
+    );
   }
 
   async requestCode(): Promise<void> {

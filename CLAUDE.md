@@ -95,3 +95,31 @@ Blueprint location:
 - **All interactive elements need `data-testid`**
 - **Every shared component root element needs `class="dt-debug"`**
 - **ESM `.js` extensions** on all backend imports
+
+---
+
+## Agent sub-task close requirement
+
+**Every agent that works a sub-task issue must close that sub-issue when its work is complete.**
+
+This applies to every feature pipeline agent: `angular-frontend-agent`, `backend-lambda-agent`, `dynamodb-data-agent`, `security-agent`, `tester-agent`, `devops-agent`, and `code-reviewer-agent`.
+
+### Required close sequence
+
+After filling in the **Completion Notes** section of your sub-issue, run:
+
+```bash
+gh issue close <sub-issue-number> --repo DallasLaComb/DalTime
+```
+
+Do this as the final step of your work — after staging/committing your changes and after updating the Completion Notes. Do not leave the sub-issue open once your work is complete.
+
+### Why this matters
+
+- Parent stories with all agent sub-tasks closed can be identified and closed by the Product Owner Agent automatically.
+- Open sub-issues on a finished story create false signals on the project board — they appear as "Backlog" items that need attention when they don't.
+- Later agents read sibling sub-issues to get context; a closed sub-issue with complete Completion Notes is the correct signal that an earlier agent's work is ready to read and build on.
+
+### Rule: do not skip this step
+
+Forgetting to close the sub-issue is treated the same as incomplete work — the story cannot be considered done until every agent sub-issue is closed.

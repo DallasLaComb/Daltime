@@ -102,7 +102,7 @@ export class EmployeeAvailabilityComponent {
     const errors: Partial<Record<DayOfWeek, string | null>> = {};
     const sched = this.schedule();
     for (const { key } of DAYS) {
-      errors[key] = validateDay(sched[key], key);
+      errors[key] = validateDay(sched[key]);
     }
     return errors as Record<DayOfWeek, string | null>;
   });
@@ -129,7 +129,7 @@ export class EmployeeAvailabilityComponent {
 
   readonly draftError = computed(() => {
     if (!this.draftSubmitted()) return null;
-    return validateDay(this.draftAvailability(), 'date');
+    return validateDay(this.draftAvailability());
   });
 
   readonly calendarMonthLabel = computed(() =>
@@ -196,7 +196,9 @@ export class EmployeeAvailabilityComponent {
     return cells;
   });
 
-  readonly sortedOverrideDates = computed(() => Object.keys(this.overrides()).sort());
+  readonly sortedOverrideDates = computed(() =>
+    Object.keys(this.overrides()).sort((a, b) => a.localeCompare(b)),
+  );
 
   constructor() {
     this.load();
@@ -211,7 +213,7 @@ export class EmployeeAvailabilityComponent {
     this.availabilityService.get().subscribe({
       next: (response) => {
         if ('schedule' in response && response.schedule) {
-          this.schedule.set(response.schedule as WeeklySchedule);
+          this.schedule.set(response.schedule);
           this.lastSaved.set(response.updated_at ?? null);
         } else {
           this.schedule.set(defaultSchedule());
@@ -331,7 +333,7 @@ export class EmployeeAvailabilityComponent {
     this.availabilityService.getOverrides().subscribe({
       next: (response) => {
         if ('overrides' in response && response.overrides) {
-          this.overrides.set(response.overrides as DateOverrides);
+          this.overrides.set(response.overrides);
           this.overridesLastSaved.set(response.updated_at ?? null);
         } else {
           this.overrides.set({});
@@ -513,7 +515,7 @@ export class EmployeeAvailabilityComponent {
   }
 }
 
-function validateDay(day: DayAvailability, label: string): string | null {
+function validateDay(day: DayAvailability): string | null {
   if (!day.available) return null;
   const slots = day.slots ?? [];
   if (slots.length === 0) return 'At least one time slot is required';
@@ -526,6 +528,5 @@ function validateDay(day: DayAvailability, label: string): string | null {
   if (!Number.isInteger(ms) || ms < 1 || ms > slots.length) {
     return `Max shifts must be between 1 and ${slots.length}`;
   }
-  void label;
   return null;
 }

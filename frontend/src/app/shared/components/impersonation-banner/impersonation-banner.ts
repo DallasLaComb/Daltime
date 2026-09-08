@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
-import { ButtonComponent } from '@common-daltime';
+import { ButtonComponent } from '../button/button';
 import { ImpersonationService } from '../../../core/services/impersonation.service';
 
 @Component({

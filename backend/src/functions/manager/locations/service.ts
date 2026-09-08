@@ -1,7 +1,7 @@
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-export class ForbiddenError extends Error {}
+import { ForbiddenError } from '../../shared/errors.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; manager_id: string }> {
   const lookup = await db.getCallerLookup(sub);

@@ -1,14 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 
 vi.mock('../../../../src/functions/web-admin/org-admins/service.js', () => ({
-  ValidationError: class ValidationError extends Error {},
-  ConflictError: class ConflictError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
   listOrgAdmins: vi.fn(),
   createOrgAdmin: vi.fn(),
   disableOrgAdmin: vi.fn(),
   enableOrgAdmin: vi.fn(),
+}));
+
+// Mock requireWebAdminWithLookup so handler tests don't need a live DynamoDB.
+// Default resolves to an ACTIVE WebAdmin caller; individual tests override as needed.
+vi.mock('../../../../src/functions/shared/auth.js', () => ({
+  requireWebAdminWithLookup: vi.fn(),
+  setRequestOrigin: vi.fn(),
 }));
 
 // Prevent the real CognitoIdentityProviderClient from being instantiated.
@@ -27,17 +32,23 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 }));
 
 import { handler } from '../../../../src/functions/web-admin/org-admins/handler.js';
+import { ValidationError, ConflictError, NotFoundError } from '../../../../src/functions/shared/errors.js';
 import {
-  ValidationError,
-  ConflictError,
-  NotFoundError,
   listOrgAdmins,
   createOrgAdmin,
   disableOrgAdmin,
   enableOrgAdmin,
 } from '../../../../src/functions/web-admin/org-admins/service.js';
+import { requireWebAdminWithLookup } from '../../../../src/functions/shared/auth.js';
 
 // ─── Factories ────────────────────────────────────────────────────────────────
+
+const mockCaller = {
+  sub: 'web-admin-sub',
+  web_admin_id: 'WADMIN#uuid-1',
+  email: 'admin@example.com',
+  status: 'ACTIVE' as const,
+};
 
 function buildApiGwEvent(
   overrides: Partial<APIGatewayProxyEventV2WithJWTAuthorizer> & { method?: string } = {},
@@ -54,7 +65,7 @@ function buildApiGwEvent(
       accountId: '123456789012',
       apiId: 'test-api',
       authorizer: {
-        jwt: { claims: { 'cognito:groups': 'WebAdmin', sub: 'admin-sub' }, scopes: null },
+        jwt: { claims: { 'cognito:groups': 'WebAdmin', sub: 'web-admin-sub' }, scopes: null },
       },
       domainName: 'test.execute-api.us-east-1.amazonaws.com',
       domainPrefix: 'test',
@@ -91,7 +102,38 @@ function body(result: APIGatewayProxyStructuredResultV2) {
   return JSON.parse(result.body as string);
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default: caller is an active WebAdmin.
+  vi.mocked(requireWebAdminWithLookup).mockResolvedValue(mockCaller);
+});
+
+// ─── Authorization: data-driven WebAdmin gate ─────────────────────────────────
+
+describe('Authorization — data-driven WebAdmin gate', () => {
+  it('(a) returns 403 when the caller is not in the WebAdmin group', async () => {
+    vi.mocked(requireWebAdminWithLookup).mockRejectedValue(new ForbiddenError('WebAdmin role required'));
+    const result = (await handler(buildApiGwEvent())) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(403);
+    expect(listOrgAdmins).not.toHaveBeenCalled();
+  });
+
+  it('(b) returns 403 when caller is in the group but has no DynamoDB record', async () => {
+    vi.mocked(requireWebAdminWithLookup).mockRejectedValue(new ForbiddenError('WebAdmin record not found'));
+    const result = (await handler(buildApiGwEvent())) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(403);
+    expect(body(result)).toEqual({ error: 'WebAdmin record not found' });
+    expect(listOrgAdmins).not.toHaveBeenCalled();
+  });
+
+  it('(c) returns 403 when caller has a DynamoDB record but is DISABLED', async () => {
+    vi.mocked(requireWebAdminWithLookup).mockRejectedValue(new ForbiddenError('WebAdmin account is disabled'));
+    const result = (await handler(buildApiGwEvent())) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(403);
+    expect(body(result)).toEqual({ error: 'WebAdmin account is disabled' });
+    expect(listOrgAdmins).not.toHaveBeenCalled();
+  });
+});
 
 // ─── OPTIONS ─────────────────────────────────────────────────────────────────
 
@@ -101,6 +143,8 @@ describe('OPTIONS — CORS preflight', () => {
       buildApiGwEvent({ method: 'OPTIONS', routeKey: 'OPTIONS /web-admin/organizations/{orgId}/org-admins' }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(200);
+    // OPTIONS short-circuits before the auth guard.
+    expect(requireWebAdminWithLookup).not.toHaveBeenCalled();
   });
 });
 
@@ -135,13 +179,20 @@ describe('GET /web-admin/organizations/{orgId}/org-admins — list', () => {
 describe('POST /web-admin/organizations/{orgId}/org-admins — create', () => {
   const validBody = JSON.stringify({ email: 'admin@acme.com', name: 'Jane Admin', temp_password: 'Temp@1234' });
 
-  it('returns 201 with the created user', async () => {
+  it('returns 201 with the created user, passing webAdminId to service', async () => {
     vi.mocked(createOrgAdmin).mockResolvedValue(mockUser);
     const result = (await handler(
       buildApiGwEvent({ method: 'POST', routeKey: 'POST /web-admin/organizations/{orgId}/org-admins', body: validBody }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(201);
     expect(body(result)).toEqual(mockUser);
+    // Verify webAdminId is threaded into the service call.
+    expect(createOrgAdmin).toHaveBeenCalledWith(
+      'org-123',
+      { email: 'admin@acme.com', name: 'Jane Admin', temp_password: 'Temp@1234' },
+      expect.anything(), // cognitoClient
+      'WADMIN#uuid-1',
+    );
   });
 
   it('returns 400 when body is missing', async () => {
@@ -209,7 +260,7 @@ describe('POST /web-admin/organizations/{orgId}/org-admins — create', () => {
 // ─── DELETE /web-admin/organizations/{orgId}/org-admins/{userId} ─────────────
 
 describe('DELETE /web-admin/organizations/{orgId}/org-admins/{userId} — disable', () => {
-  it('returns 204 when user is disabled', async () => {
+  it('returns 204 when user is disabled, passing webAdminId to service', async () => {
     vi.mocked(disableOrgAdmin).mockResolvedValue(undefined);
     const result = (await handler(
       buildApiGwEvent({
@@ -219,6 +270,12 @@ describe('DELETE /web-admin/organizations/{orgId}/org-admins/{userId} — disabl
       }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(204);
+    expect(disableOrgAdmin).toHaveBeenCalledWith(
+      'org-123',
+      'user-sub-123',
+      expect.anything(), // cognitoClient
+      'WADMIN#uuid-1',
+    );
   });
 
   it('returns 400 when userId is missing', async () => {
@@ -263,7 +320,7 @@ describe('DELETE /web-admin/organizations/{orgId}/org-admins/{userId} — disabl
 // ─── PATCH /web-admin/organizations/{orgId}/org-admins/{userId} ──────────────
 
 describe('PATCH /web-admin/organizations/{orgId}/org-admins/{userId} — enable', () => {
-  it('returns 204 when user is enabled', async () => {
+  it('returns 204 when user is enabled, passing webAdminId to service', async () => {
     vi.mocked(enableOrgAdmin).mockResolvedValue(undefined);
     const result = (await handler(
       buildApiGwEvent({
@@ -273,6 +330,12 @@ describe('PATCH /web-admin/organizations/{orgId}/org-admins/{userId} — enable'
       }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(204);
+    expect(enableOrgAdmin).toHaveBeenCalledWith(
+      'org-123',
+      'user-sub-123',
+      expect.anything(), // cognitoClient
+      'WADMIN#uuid-1',
+    );
   });
 
   it('returns 400 when userId is missing', async () => {

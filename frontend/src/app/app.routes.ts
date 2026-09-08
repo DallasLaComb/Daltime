@@ -58,6 +58,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'web-admin/profile',
+    canMatch: [authGuard, roleGuard],
+    data: { roles: ['WebAdmin'] as const },
+    loadComponent: () =>
+      import('./features/web-admin/profile/profile').then((m) => m.WebAdminProfileComponent),
+  },
+  {
     path: 'web-admin',
     canMatch: [authGuard, roleGuard],
     data: { roles: ['WebAdmin'] as const },
@@ -173,13 +180,27 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'employee',
+    path: 'employee/swap-shifts',
     canMatch: [authGuard, roleGuard],
     data: { roles: ['Employee'] as const },
     loadComponent: () =>
-      import('./features/employee/employee-dashboard/employee-dashboard').then(
-        (m) => m.EmployeeDashboard,
-      ),
+      import('./features/employee/swap-shifts/swap-shifts').then((m) => m.SwapShiftsComponent),
+  },
+  // Redirect bare /employee to /employee/schedule so the schedule view is the default landing page.
+  // Guards are NOT placed here (NG04014: canMatch and redirectTo cannot coexist on the same route).
+  // Auth and role enforcement is handled by the guards on the destination employee/schedule route.
+  {
+    path: 'employee',
+    redirectTo: 'employee/schedule',
+    pathMatch: 'full',
+  },
+
+  // Shared cross-role pages — accessible to all authenticated roles
+  {
+    path: 'notifications',
+    canMatch: [authGuard],
+    loadComponent: () =>
+      import('./shared/notifications/notifications-page').then((m) => m.NotificationsPageComponent),
   },
 
   // Public info pages
@@ -206,6 +227,10 @@ export const routes: Routes = [
   {
     path: 'about',
     loadComponent: () => import('./shared/about/about').then((m) => m.AboutComponent),
+  },
+  {
+    path: 'pricing',
+    loadComponent: () => import('./shared/pricing/pricing').then((m) => m.PricingComponent),
   },
 
   // Home — public landing page; authenticated users are redirected by AuthService.initialize()

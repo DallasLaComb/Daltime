@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ButtonComponent } from '@common-daltime';
+import { ButtonComponent, PasswordInputComponent } from '@common-daltime';
 import { AuthService } from '../auth';
 
 @Component({
   selector: 'app-login',
-  imports: [RouterLink, ButtonComponent],
+  imports: [RouterLink, ButtonComponent, PasswordInputComponent],
   templateUrl: './login.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -15,14 +15,9 @@ export class LoginComponent {
 
   readonly email = signal('');
   readonly password = signal('');
-  readonly showPassword = signal(false);
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
-
-  togglePassword(): void {
-    this.showPassword.update((v) => !v);
-  }
 
   async onSubmit(): Promise<void> {
     this.submitted.set(true);

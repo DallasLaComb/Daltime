@@ -1,112 +1,291 @@
-<div class="w-full px-4 py-4 md:py-6">
-  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="w-full px-3 py-4 md:px-4 md:py-6">
+  <!-- ── Page header ──────────────────────────────────────────────────────── -->
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <h2 class="text-2xl font-bold text-gray-900">My Schedule</h2>
-      <p class="text-sm text-gray-500">Your assigned shifts</p>
+      <h2 class="text-2xl font-bold text-neutral-900">My Schedule</h2>
+      <p class="text-sm text-neutral-500">Your assigned shifts</p>
     </div>
-    <div class="flex items-center gap-2">
-      <button
-        type="button"
-        class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
-        data-testid="prev-month"
-        aria-label="Previous month"
-        (click)="prevMonth()"
-        (keydown.enter)="prevMonth()"
-        (keydown.space)="prevMonth()"
+
+    <!-- View toggle: Day / Week / Month — primary variant for active, secondary for inactive -->
+    <div
+      role="group"
+      aria-label="Schedule view"
+      class="flex items-center gap-1 self-start rounded-lg bg-neutral-100 p-1"
+    >
+      <app-button
+        [variant]="viewMode() === 'day' ? 'primary' : 'secondary'"
+        size="sm"
+        testId="view-toggle-day"
+        [attr.aria-pressed]="viewMode() === 'day'"
+        (clicked)="setViewMode('day')"
+        >Day</app-button
       >
-        &#8249;
-      </button>
-      <span class="min-w-[140px] text-center text-sm font-semibold text-gray-800">{{
-        monthLabel()
-      }}</span>
-      <button
-        type="button"
-        class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
-        data-testid="next-month"
-        aria-label="Next month"
-        (click)="nextMonth()"
-        (keydown.enter)="nextMonth()"
-        (keydown.space)="nextMonth()"
+      <app-button
+        [variant]="viewMode() === 'week' ? 'primary' : 'secondary'"
+        size="sm"
+        testId="view-toggle-week"
+        [attr.aria-pressed]="viewMode() === 'week'"
+        (clicked)="setViewMode('week')"
+        >Week</app-button
       >
-        &#8250;
-      </button>
-      @if (!isCurrentMonth()) {
-        <app-button
-          variant="secondary"
-          size="sm"
-          data-testid="goto-current-month"
-          (clicked)="goToCurrentMonth()"
-        >
-          This Month
-        </app-button>
-      }
+      <app-button
+        [variant]="viewMode() === 'month' ? 'primary' : 'secondary'"
+        size="sm"
+        testId="view-toggle-month"
+        [attr.aria-pressed]="viewMode() === 'month'"
+        (clicked)="setViewMode('month')"
+        >Month</app-button
+      >
     </div>
   </div>
 
+  <!-- ── Date navigation ───────────────────────────────────────────────────── -->
+  <div class="mb-5 flex flex-wrap items-center gap-2">
+    <app-button
+      variant="secondary"
+      size="sm"
+      testId="nav-prev"
+      ariaLabel="Previous period"
+      (clicked)="navigatePrev()"
+      >&#8249;</app-button
+    >
+
+    <span
+      class="min-w-[140px] text-center text-sm font-semibold text-neutral-800 sm:min-w-[200px] sm:text-base"
+      aria-live="polite"
+      aria-atomic="true"
+      >{{ viewLabel() }}</span
+    >
+
+    <app-button
+      variant="secondary"
+      size="sm"
+      testId="nav-next"
+      ariaLabel="Next period"
+      (clicked)="navigateNext()"
+      >&#8250;</app-button
+    >
+
+    @if (showTodayButton()) {
+      <app-button variant="secondary" size="sm" testId="nav-today" (clicked)="navigateToday()"
+        >Today</app-button
+      >
+    }
+  </div>
+
+  <!-- ── Loading / Error states ───────────────────────────────────────────── -->
   @if (loading()) {
     <app-loading-spinner />
   } @else if (error()) {
-    <app-error-alert [message]="error()!" />
-  } @else if (grouped().length === 0) {
-    <app-empty-state
-      title="No shifts scheduled"
-      description="You have no shifts assigned for {{ monthLabel() }}."
-    />
+    <app-error-alert [message]="error()!" [retryable]="true" (retry)="retry()" />
   } @else {
-    <div class="flex flex-col gap-6">
-      @for (group of grouped(); track group.date) {
-        <div>
-          <div class="mb-2 flex items-center gap-2">
-            @if (isToday(group.date)) {
-              <span class="rounded-full bg-dt-primary px-2.5 py-0.5 text-xs font-bold text-white"
-                >Today</span
-              >
-            }
-            <h3 class="text-sm font-semibold text-gray-700" data-testid="date-group-label">
-              {{ group.dateLabel }}
-            </h3>
-          </div>
-
-          <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            @for (shift of group.shifts; track shift.shift_id) {
-              <div
+    <!-- ════════════════════ DAY VIEW ════════════════════ -->
+    @if (viewMode() === 'day') {
+      <!-- Own shifts for the selected date -->
+      @if (shifts().length === 0) {
+        <app-empty-state
+          [title]="isViewingToday() ? 'No shifts scheduled today' : 'No shifts scheduled'"
+          [description]="
+            isViewingToday()
+              ? 'You have no shifts scheduled for today.'
+              : 'No shifts for ' + dayLabel() + '.'
+          "
+        />
+      } @else {
+        <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+          @for (shift of shifts(); track shift.shift_id; let idx = $index) {
+            <div
+              [class]="
+                'flex items-center gap-4 border-l-4 px-5 py-4 ' +
+                (idx > 0 ? 'border-t border-neutral-100 ' : '') +
+                shiftBorderStyles[shift.type]
+              "
+              data-testid="shift-card"
+            >
+              <div class="w-28 shrink-0">
+                <p class="text-sm font-semibold text-neutral-800">
+                  {{ formatTime(shift.start_time) }}
+                </p>
+                <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-neutral-900">
+                  {{ shift.location_name || 'Location TBD' }}
+                </p>
+                <p class="mt-0.5 text-sm text-neutral-500 capitalize">{{ shift.type }} shift</p>
+              </div>
+              <span
                 [class]="
-                  'flex items-center gap-4 border-l-4 px-5 py-4 ' +
-                  (group.shifts.indexOf(shift) > 0 ? 'border-t border-gray-100 ' : '') +
-                  shiftBorderStyles[shift.type]
+                  'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                  shiftBadgeStyles[shift.type]
                 "
-                data-testid="shift-card"
+                data-testid="shift-type-badge"
+                >{{ shift.type }}</span
               >
-                <div class="w-28 shrink-0">
-                  <p class="text-sm font-semibold text-gray-800">
-                    {{ formatTime(shift.start_time) }}
-                  </p>
-                  <p class="text-xs text-gray-400">to {{ formatTime(shift.end_time) }}</p>
-                </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Available from coworkers (day view only; hidden when empty) -->
+      @if (!availableShiftsLoading() && availableShifts().length > 0) {
+        <section class="mt-6" aria-label="Available shifts from coworkers">
+          <h3 class="mb-3 text-sm font-semibold text-neutral-700">Available from coworkers</h3>
+          <div class="flex flex-col gap-3">
+            @for (shift of availableShifts(); track shift.shift_id) {
+              <div
+                class="flex flex-col gap-3 rounded-xl border-2 border-dashed border-secondary bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center"
+                data-testid="available-shift-card"
+              >
                 <div class="min-w-0 flex-1">
-                  <p class="font-medium text-gray-900">
+                  <p class="font-medium text-neutral-900">
                     {{ shift.location_name || 'Location TBD' }}
                   </p>
-                  <p class="mt-0.5 text-sm text-gray-500 capitalize">{{ shift.type }} shift</p>
+                  <p class="mt-0.5 text-sm text-neutral-500 capitalize">
+                    {{ shift.type }} shift · {{ formatTime(shift.start_time) }} –
+                    {{ formatTime(shift.end_time) }}
+                  </p>
                 </div>
                 <span
                   [class]="
-                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                    'self-start shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize sm:self-auto ' +
                     shiftBadgeStyles[shift.type]
                   "
-                  data-testid="shift-type-badge"
+                  data-testid="available-shift-type-badge"
                   >{{ shift.type }}</span
+                >
+                <app-button variant="secondary" size="sm" [disabled]="true" testId="claim-shift-btn"
+                  >Claim shift</app-button
                 >
               </div>
             }
           </div>
+        </section>
+      }
+    }
+
+    <!-- ════════════════════ WEEK VIEW ════════════════════ -->
+    @if (viewMode() === 'week') {
+      <!-- Horizontal-scroll wrapper ensures columns don't collapse on mobile -->
+      <div class="overflow-x-auto" role="region" aria-label="Week schedule">
+        <div class="grid min-w-[560px] grid-cols-7">
+          <!-- Day column headers — always rendered so keyboard/screen-reader users can orient -->
+          @for (day of weekColumns(); track day.dateKey) {
+            <div
+              [class]="
+                'border-b border-neutral-200 px-2 py-2 text-center text-xs font-semibold ' +
+                (day.isToday ? 'bg-tertiary/20 text-primary' : 'text-neutral-500')
+              "
+              [attr.aria-current]="day.isToday ? 'date' : null"
+              data-testid="week-day-header"
+            >
+              {{ day.dayLabel }}
+            </div>
+          }
+          <!-- Shift cells per day -->
+          @for (day of weekColumns(); track day.dateKey) {
+            <div
+              [class]="
+                'min-h-16 border-r border-neutral-100 p-1.5 last:border-r-0 ' +
+                (day.isToday ? 'bg-tertiary/10' : '')
+              "
+              data-testid="week-day-cell"
+            >
+              @for (shift of day.shifts; track shift.shift_id) {
+                <div
+                  [class]="
+                    'mb-1 rounded-md border-l-2 px-1.5 py-1 text-xs ' +
+                    shiftBorderStyles[shift.type] +
+                    ' ' +
+                    shiftBadgeStyles[shift.type]
+                  "
+                  data-testid="week-shift-card"
+                >
+                  <p class="font-semibold leading-tight">{{ formatTime(shift.start_time) }}</p>
+                  <p class="leading-tight opacity-80">{{ shift.location_name || 'TBD' }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <!-- Empty state is shown below the column headers, not instead of them -->
+      @if (weekIsEmpty()) {
+        <div class="mt-6">
+          <app-empty-state
+            title="No shifts scheduled"
+            description="You have no shifts assigned for this week."
+          />
         </div>
       }
-    </div>
+    }
 
-    <p class="mt-6 text-sm text-gray-500">
-      <span class="font-semibold text-gray-700">{{ shifts().length }}</span>
-      {{ shifts().length === 1 ? 'shift' : 'shifts' }} in {{ monthLabel() }}
-    </p>
+    <!-- ════════════════════ MONTH VIEW ════════════════════ -->
+    @if (viewMode() === 'month') {
+      @if (grouped().length === 0) {
+        <app-empty-state
+          title="No shifts scheduled"
+          [description]="'You have no shifts assigned for ' + viewLabel() + '.'"
+        />
+      } @else {
+        <div class="flex flex-col gap-6">
+          @for (group of grouped(); track group.date) {
+            <div>
+              <div class="mb-2 flex items-center gap-2">
+                @if (isToday(group.date)) {
+                  <span class="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-white"
+                    >Today</span
+                  >
+                }
+                <h3 class="text-sm font-semibold text-neutral-700" data-testid="date-group-label">
+                  {{ group.dateLabel }}
+                </h3>
+              </div>
+
+              <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+                @for (shift of group.shifts; track shift.shift_id; let idx = $index) {
+                  <div
+                    [class]="
+                      'flex items-center gap-4 border-l-4 px-5 py-4 ' +
+                      (idx > 0 ? 'border-t border-neutral-100 ' : '') +
+                      shiftBorderStyles[shift.type]
+                    "
+                    data-testid="shift-card"
+                  >
+                    <div class="w-28 shrink-0">
+                      <p class="text-sm font-semibold text-neutral-800">
+                        {{ formatTime(shift.start_time) }}
+                      </p>
+                      <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-neutral-900">
+                        {{ shift.location_name || 'Location TBD' }}
+                      </p>
+                      <p class="mt-0.5 text-sm text-neutral-500 capitalize">
+                        {{ shift.type }} shift
+                      </p>
+                    </div>
+                    <span
+                      [class]="
+                        'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                        shiftBadgeStyles[shift.type]
+                      "
+                      data-testid="shift-type-badge"
+                      >{{ shift.type }}</span
+                    >
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <p class="mt-6 text-sm text-neutral-500">
+          <span class="font-semibold text-neutral-700">{{ shifts().length }}</span>
+          {{ shifts().length === 1 ? 'shift' : 'shifts' }} in {{ viewLabel() }}
+        </p>
+      }
+    }
   }
 </div>

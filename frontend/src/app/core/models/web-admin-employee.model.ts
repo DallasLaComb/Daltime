@@ -6,7 +6,7 @@ export interface WebAdminEmployeeResponse {
   phone: string;
   org_id: string;
   org_name: string;
-  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED' | string;
+  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED';
   created_at: string;
   updated_at: string;
 }

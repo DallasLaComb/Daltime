@@ -1,12 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnInit,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
-import type { Shift, ShiftType } from '../../../core/models/shift.model';
+import type { Shift } from '../../../core/models/shift.model';
 import { EmployeeShiftsService } from './shifts.service';
 import {
   ButtonComponent,
@@ -14,43 +14,31 @@ import {
   ErrorAlertComponent,
   EmptyStateComponent,
 } from '@common-daltime';
+import {
+  SHIFT_BORDER_STYLES,
+  SHIFT_BADGE_STYLES,
+  toDateKey,
+  toMonthKey,
+  buildViewLabel,
+  buildWeekDays,
+  formatLongDateLabel,
+  getWeekStart,
+} from '../../../core/utils/schedule.utils';
+import type { ViewMode } from '../../../core/utils/schedule.utils';
 
-const SHIFT_BORDER_STYLES: Record<ShiftType, string> = {
-  morning: 'border-l-sky-400',
-  afternoon: 'border-l-amber-400',
-  night: 'border-l-violet-400',
-};
-
-const SHIFT_BADGE_STYLES: Record<ShiftType, string> = {
-  morning: 'bg-sky-100 text-sky-700',
-  afternoon: 'bg-amber-100 text-amber-700',
-  night: 'bg-violet-100 text-violet-700',
-};
-
-function toMonthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function formatMonthLabel(month: string): string {
-  const [year, m] = month.split('-');
-  return new Date(Number(year), Number(m) - 1, 1).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-function formatDateLabel(date: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
+/** A group of shifts for a single date, used by the month view. */
 interface ShiftGroup {
   date: string;
   dateLabel: string;
+  shifts: Shift[];
+}
+
+/** A single column in the week view — one per calendar day. */
+interface WeekDay {
+  date: Date;
+  dateKey: string;
+  dayLabel: string; // e.g. "Mon 16"
+  isToday: boolean;
   shifts: Shift[];
 }
 
@@ -60,19 +48,96 @@ interface ShiftGroup {
   templateUrl: './schedule.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EmployeeScheduleComponent implements OnInit {
+export class EmployeeScheduleComponent {
   private readonly shiftsService = inject(EmployeeShiftsService);
 
+  /** Expose style maps to the template for shift card theming. */
   protected readonly shiftBorderStyles = SHIFT_BORDER_STYLES;
   protected readonly shiftBadgeStyles = SHIFT_BADGE_STYLES;
 
-  protected readonly loading = signal(true);
-  protected readonly error = signal<string | null>(null);
+  // ── View state ─────────────────────────────────────────────────────────────
+
+  /** Active calendar view. Defaults to day view so the employee sees today immediately. */
+  protected readonly viewMode = signal<ViewMode>('day');
+
+  /** The date the user is currently navigated to. All view modes use this as an anchor. */
+  protected readonly currentDate = signal<Date>(new Date());
+
+  // ── Own-shifts state ───────────────────────────────────────────────────────
+
+  /** Own shifts returned by the API for the current view/date. */
   protected readonly shifts = signal<Shift[]>([]);
-  protected readonly currentMonth = signal(toMonthKey(new Date()));
 
-  protected readonly monthLabel = computed(() => formatMonthLabel(this.currentMonth()));
+  /** True while the own-shifts request is in flight. */
+  protected readonly loading = signal(true);
 
+  /** Error message if the own-shifts request failed. */
+  protected readonly error = signal<string | null>(null);
+
+  // ── Available-shifts state (day view only) ─────────────────────────────────
+
+  /** Shifts from other employees that are available for pickup on the current day. */
+  protected readonly availableShifts = signal<Shift[]>([]);
+
+  /** True while the available-shifts request is in flight (day view only). */
+  protected readonly availableShiftsLoading = signal(false);
+
+  /** Error message if the available-shifts request failed (not shown to user — section is silently hidden). */
+  protected readonly availableShiftsError = signal<string | null>(null);
+
+  // ── Derived labels ──────────────────────────────────────────────────────────
+
+  /**
+   * Human-readable label for the navigation header.
+   * Computed from viewMode + currentDate so it updates reactively.
+   */
+  protected readonly viewLabel = computed(() =>
+    buildViewLabel(this.currentDate(), this.viewMode()),
+  );
+
+  /**
+   * Long date label for the day-view empty-state description.
+   * e.g. "Thursday, June 19"
+   */
+  protected readonly dayLabel = computed(() => {
+    const d = this.currentDate();
+    return formatLongDateLabel(toDateKey(d));
+  });
+
+  /** True when the selected day-view date is today. */
+  protected readonly isViewingToday = computed(
+    () => toDateKey(this.currentDate()) === toDateKey(new Date()),
+  );
+
+  /**
+   * True when the period anchored on currentDate does NOT include today.
+   * Controls visibility of the "Today" button in the nav.
+   */
+  protected readonly showTodayButton = computed(() => {
+    const today = new Date();
+    const d = this.currentDate();
+    const mode = this.viewMode();
+    if (mode === 'day') return toDateKey(d) !== toDateKey(today);
+    if (mode === 'week') {
+      // Week spans from weekStart (Sun) to weekStart+6. Today is in range if its key is in the set.
+      const weekStart = getWeekStart(d);
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(weekStart);
+        day.setDate(day.getDate() + i);
+        if (toDateKey(day) === toDateKey(today)) return false;
+      }
+      return true;
+    }
+    // Month view: compare YYYY-MM prefix
+    return toMonthKey(d) !== toMonthKey(today);
+  });
+
+  // ── Month-view grouped data ─────────────────────────────────────────────────
+
+  /**
+   * Shifts grouped by date for month view rendering.
+   * Sorted by date asc, then start_time asc within each group.
+   */
   protected readonly grouped = computed((): ShiftGroup[] => {
     const map = new Map<string, Shift[]>();
     for (const shift of this.shifts()) {
@@ -83,57 +148,193 @@ export class EmployeeScheduleComponent implements OnInit {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, dayShifts]) => ({
         date,
-        dateLabel: formatDateLabel(date),
-        shifts: dayShifts.sort((a, b) => a.start_time.localeCompare(b.start_time)),
+        dateLabel: formatLongDateLabel(date),
+        shifts: [...dayShifts].sort((a, b) => a.start_time.localeCompare(b.start_time)),
       }));
   });
 
-  ngOnInit(): void {
-    this.load();
+  // ── Week-view column data ───────────────────────────────────────────────────
+
+  /**
+   * 7 WeekDay objects (Sun–Sat) with shifts pre-filtered into each column.
+   * Re-computed whenever shifts or currentDate change.
+   */
+  protected readonly weekColumns = computed((): WeekDay[] => {
+    const today = new Date();
+    const todayKey = toDateKey(today);
+    const days = buildWeekDays(this.currentDate());
+    const ownShifts = this.shifts();
+    return days.map((day) => {
+      const dateKey = toDateKey(day);
+      return {
+        date: day,
+        dateKey,
+        dayLabel: `${day.toLocaleString('default', { weekday: 'short' })} ${day.getDate()}`,
+        isToday: dateKey === todayKey,
+        shifts: ownShifts
+          .filter((s) => s.date === dateKey)
+          .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      };
+    });
+  });
+
+  /** True when there are no shifts anywhere in the current week. Used to show empty state. */
+  protected readonly weekIsEmpty = computed(() => this.shifts().length === 0);
+
+  // ── Today check for month-view date-group headers ──────────────────────────
+
+  /** Returns true when the given YYYY-MM-DD date string is today. */
+  protected isToday(date: string): boolean {
+    return date === toDateKey(new Date());
   }
 
-  private load(): void {
+  constructor() {
+    /**
+     * Re-fetch data whenever viewMode or currentDate change.
+     * effect() runs once immediately on construction and again on any signal change,
+     * eliminating the need to manually call load() on every navigation action.
+     * Must be created in the constructor to have access to the Angular injector context.
+     */
+    effect(() => {
+      this.load(this.viewMode(), this.currentDate());
+    });
+  }
+
+  // ── Data loading ────────────────────────────────────────────────────────────
+
+  /**
+   * Fetches own shifts (and, for day view, available shifts) for the given view/date.
+   * Called from the effect() in ngOnInit — never called directly from navigation handlers.
+   */
+  private load(mode: ViewMode, date: Date): void {
     this.loading.set(true);
     this.error.set(null);
-    this.shiftsService.list(this.currentMonth()).subscribe({
+    this.availableShifts.set([]);
+    this.availableShiftsError.set(null);
+
+    const dateKey = toDateKey(date);
+    const monthKey = toMonthKey(date);
+    const weekStartKey = toDateKey(getWeekStart(date));
+
+    const obs =
+      mode === 'day'
+        ? this.shiftsService.listByDate(dateKey)
+        : mode === 'week'
+          ? this.shiftsService.listByWeek(weekStartKey)
+          : this.shiftsService.listByMonth(monthKey);
+
+    obs.subscribe({
       next: (shifts) => {
         this.shifts.set(shifts);
         this.loading.set(false);
       },
-      error: () => {
+      error: (err) => {
+        console.error('[EmployeeSchedule] shifts request failed', {
+          mode,
+          date: date.toISOString(),
+          status: err?.status,
+          statusText: err?.statusText,
+          url: err?.url,
+          error: err?.error,
+          errorMessage: err?.error?.message,
+          errorName: err?.error?.name,
+        });
+        console.error('[EmployeeSchedule] raw error object:', err);
         this.error.set('Failed to load your schedule. Please try again.');
         this.loading.set(false);
       },
     });
+
+    // Available shifts are only relevant in day view; skip the call for other modes.
+    if (mode === 'day') {
+      this.loadAvailableShifts(dateKey);
+    }
   }
 
-  protected prevMonth(): void {
-    const [y, m] = this.currentMonth().split('-').map(Number);
-    const d = new Date(y, m - 2, 1);
-    this.currentMonth.set(toMonthKey(d));
-    this.load();
+  /**
+   * Fetches available-for-pickup shifts from coworkers for the given date.
+   * Called only from load() when in day view. Errors are silently suppressed
+   * because the "Available from coworkers" section is hidden when the response is empty.
+   */
+  private loadAvailableShifts(dateKey: string): void {
+    this.availableShiftsLoading.set(true);
+    this.shiftsService.listAvailableShifts(dateKey).subscribe({
+      next: (shifts) => {
+        this.availableShifts.set(shifts);
+        this.availableShiftsLoading.set(false);
+      },
+      error: () => {
+        // Silently suppress — the section stays hidden when unavailable.
+        this.availableShiftsError.set('unavailable');
+        this.availableShiftsLoading.set(false);
+      },
+    });
   }
 
-  protected nextMonth(): void {
-    const [y, m] = this.currentMonth().split('-').map(Number);
-    const d = new Date(y, m, 1);
-    this.currentMonth.set(toMonthKey(d));
-    this.load();
+  // ── Navigation handlers ─────────────────────────────────────────────────────
+
+  /**
+   * Moves the current date backwards by one unit of the active view:
+   * day view → -1 day, week view → -7 days, month view → -1 month.
+   */
+  protected navigatePrev(): void {
+    const d = new Date(this.currentDate());
+    const mode = this.viewMode();
+    if (mode === 'day') {
+      d.setDate(d.getDate() - 1);
+    } else if (mode === 'week') {
+      d.setDate(d.getDate() - 7);
+    } else {
+      d.setMonth(d.getMonth() - 1);
+    }
+    this.currentDate.set(d);
   }
 
-  protected goToCurrentMonth(): void {
-    this.currentMonth.set(toMonthKey(new Date()));
-    this.load();
+  /**
+   * Moves the current date forwards by one unit of the active view:
+   * day view → +1 day, week view → +7 days, month view → +1 month.
+   */
+  protected navigateNext(): void {
+    const d = new Date(this.currentDate());
+    const mode = this.viewMode();
+    if (mode === 'day') {
+      d.setDate(d.getDate() + 1);
+    } else if (mode === 'week') {
+      d.setDate(d.getDate() + 7);
+    } else {
+      d.setMonth(d.getMonth() + 1);
+    }
+    this.currentDate.set(d);
   }
 
-  protected isCurrentMonth(): boolean {
-    return this.currentMonth() === toMonthKey(new Date());
+  /**
+   * Resets the current date to today, anchoring all views to the current period.
+   * Only shown when the current period doesn't include today.
+   */
+  protected navigateToday(): void {
+    this.currentDate.set(new Date());
   }
 
-  protected isToday(date: string): boolean {
-    return date === toMonthKey(new Date()) + '-' + String(new Date().getDate()).padStart(2, '0');
+  /**
+   * Switches the active view mode. Resets to today when switching views so the
+   * user always lands on a sensible period rather than an arbitrary past/future date.
+   */
+  protected setViewMode(mode: ViewMode): void {
+    this.viewMode.set(mode);
+    this.currentDate.set(new Date());
   }
 
+  /** Re-triggers the current view's data load. Used by the error-alert retry button. */
+  protected retry(): void {
+    this.load(this.viewMode(), this.currentDate());
+  }
+
+  // ── Formatting helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Converts a 24-hour HH:MM time string to a human-readable 12-hour format.
+   * e.g. "14:00" → "2 PM", "09:30" → "9:30 AM".
+   */
   protected formatTime(time: string): string {
     const [h, m] = time.split(':').map(Number);
     const period = h < 12 ? 'AM' : 'PM';

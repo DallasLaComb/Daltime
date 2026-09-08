@@ -3,15 +3,27 @@
 
   @if (loading()) {
     <div class="text-center py-12">
-      <div class="dt-spinner text-dt-secondary" role="status">
+      <output class="dt-spinner text-dt-secondary">
         <span class="sr-only">Loading...</span>
-      </div>
+      </output>
     </div>
   }
 
   @if (error()) {
-    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
-      {{ error() }}
+    <div
+      class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 flex items-center justify-between"
+      role="alert"
+    >
+      <span>{{ error() }}</span>
+      <app-button
+        variant="primary-outline"
+        size="sm"
+        testId="org-refresh-btn"
+        [disabled]="orgRefreshCooldown()"
+        (clicked)="refreshOrg()"
+      >
+        Refresh
+      </app-button>
     </div>
   }
 
@@ -41,9 +53,9 @@
 
         @if (hierarchyLoading()) {
           <div class="text-center py-8">
-            <div class="dt-spinner text-dt-secondary" role="status">
+            <output class="dt-spinner text-dt-secondary">
               <span class="sr-only">Loading...</span>
-            </div>
+            </output>
           </div>
         } @else if (hierarchyError()) {
           <div
@@ -51,13 +63,14 @@
             role="alert"
           >
             <span>{{ hierarchyError() }}</span>
-            <button
-              type="button"
-              class="btn-dt-primary-outline btn-dt-sm ml-4"
-              (click)="loadHierarchy()"
+            <app-button
+              variant="primary-outline"
+              size="sm"
+              testId="hierarchy-retry-btn"
+              (clicked)="loadHierarchy()"
             >
               Retry
-            </button>
+            </app-button>
           </div>
         } @else {
           <!-- Org root node -->

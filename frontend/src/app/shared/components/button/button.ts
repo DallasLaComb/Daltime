@@ -38,6 +38,8 @@ export class ButtonComponent {
   fullWidth = input<boolean>(false);
   type = input<'button' | 'submit'>('button');
   testId = input<string>();
+  /** Optional accessible label forwarded to the inner <button> element's aria-label attribute. Use for icon-only buttons where visible text is absent. */
+  ariaLabel = input<string>();
 
   clicked = output<void>();
 

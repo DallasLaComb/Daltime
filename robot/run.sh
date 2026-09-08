@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Load .env
-if [ -f .env ]; then
+if [[ -f .env ]]; then
   set -a
   source .env
   set +a
@@ -14,7 +14,7 @@ else
   exit 1
 fi
 
-if [ -z "${WEB_ADMIN_PASSWORD:-}" ]; then
+if [[ -z "${WEB_ADMIN_PASSWORD:-}" ]]; then
   echo "ERROR: WEB_ADMIN_PASSWORD is not set in .env"
   exit 1
 fi

@@ -3,10 +3,11 @@
   [type]="type()"
   [disabled]="isDisabled()"
   [attr.data-testid]="testId()"
+  [attr.aria-label]="ariaLabel()"
   (click)="clicked.emit()"
 >
   @if (loading()) {
-    <span class="dt-spinner-sm" role="status"></span>
+    <output class="dt-spinner-sm"></output>
   }
   <ng-content />
 </button>

@@ -6,6 +6,15 @@ Give Web Admin a read-only view of every employee across all organizations.
 Web Admin support staff use this to look up a specific user when investigating
 an issue without needing to know which org they belong to.
 
+## Auth Pattern (Story #257)
+
+The handler calls `requireWebAdminWithLookup(event)` (async, from `shared/auth.ts`) instead of the old synchronous `requireWebAdmin`. This enforces two layers:
+
+1. Cognito group check — the caller must be in the `WebAdmin` group.
+2. DynamoDB provisioning check — the caller must have an ACTIVE `USER#<sub>/METADATA` record. Missing or DISABLED records return 403.
+
+This is a read-only endpoint so `web_admin_id` is not threaded into the service call. The auth gate still applies.
+
 ## API surface
 
 | Method  | Path                   | Auth         | Description                                                     |

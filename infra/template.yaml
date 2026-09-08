@@ -427,6 +427,18 @@ Resources:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminEmployeesFunction'
       RetentionInDays: 1
 
+  WebAdminProfileFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminProfileFunction'
+      RetentionInDays: 1
+
+  WebAdminGenerateDummyDataFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminGenerateDummyDataFunction'
+      RetentionInDays: 1
+
   DalTimeHttpApi:
     Type: AWS::Serverless::HttpApi
     DependsOn: ApiAccessLogGroupPolicy
@@ -460,6 +472,7 @@ Resources:
           - GET
           - POST
           - PUT
+          - PATCH
           - DELETE
           - OPTIONS
         MaxAge: 300
@@ -469,6 +482,8 @@ Resources:
     Properties:
       TableName: !Sub 'daltime-${AWS::StackName}'
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -1130,12 +1145,6 @@ Resources:
             Path: /web-admin/impersonate/{userId}/context
             Method: GET
             ApiId: !Ref DalTimeHttpApi
-        ProxyManagerShiftsNeeded:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/manager/shifts-needed
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
         OptionsImpersonateRoot:
           Type: HttpApi
           Properties:
@@ -1168,134 +1177,45 @@ Resources:
             ApiId: !Ref DalTimeHttpApi
             Auth:
               Authorizer: NONE
-        ProxyAll:
+        # Generic catch-all: every "{role}/..." route under impersonate is
+        # resolved in-process by route-registry.ts, so this single set of
+        # method-specific events (HttpApi requires one event per method) is
+        # the *only* registration a new real feature route ever needs on the
+        # impersonate side — no per-route entries above this point.
+        ProxyAllGet:
           Type: HttpApi
           Properties:
             Path: /web-admin/impersonate/{userId}/{proxy+}
             Method: GET
             ApiId: !Ref DalTimeHttpApi
-        OptionsImpersonateProxy:
+        ProxyAllPost:
           Type: HttpApi
           Properties:
-            Path: /web-admin/impersonate/{userId}/manager/shifts-needed
-            Method: OPTIONS
+            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Method: POST
             ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
+        ProxyAllPut:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Method: PUT
+            ApiId: !Ref DalTimeHttpApi
+        ProxyAllPatch:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        ProxyAllDelete:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
         OptionsProxyAll:
           Type: HttpApi
           Properties:
             Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        AssignManagerLocation:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations
-            Method: POST
-            ApiId: !Ref DalTimeHttpApi
-        RemoveManagerLocation:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations/{locationId}
-            Method: DELETE
-            ApiId: !Ref DalTimeHttpApi
-        OptionsProxyManagerLocations:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsProxyManagerLocationById:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations/{locationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        AssignEmployeeLocation:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations
-            Method: POST
-            ApiId: !Ref DalTimeHttpApi
-        RemoveEmployeeLocation:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations/{locationId}
-            Method: DELETE
-            ApiId: !Ref DalTimeHttpApi
-        OptionsProxyEmployeeLocations:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsProxyEmployeeLocationById:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations/{locationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        GetEmployeeProfile:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/profile
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        OptionsProxyEmployeeProfile:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/profile
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        GetEmployeeAvailability:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        UpdateEmployeeAvailabilityProxy:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability
-            Method: PUT
-            ApiId: !Ref DalTimeHttpApi
-        OptionsProxyEmployeeAvailability:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        GetEmployeeAvailabilityOverridesProxy:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        UpdateEmployeeAvailabilityOverridesProxy:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
-            Method: PUT
-            ApiId: !Ref DalTimeHttpApi
-        OptionsProxyEmployeeAvailabilityOverrides:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
             Method: OPTIONS
             ApiId: !Ref DalTimeHttpApi
             Auth:
@@ -1357,6 +1277,100 @@ Resources:
       BuildProperties:
         EntryPoints:
           - src/functions/web-admin/employees/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  WebAdminProfileFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: WebAdminProfileFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-WebAdminProfileFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-WebAdminProfileFunction'
+      CodeUri: ../backend
+      Handler: src/functions/web-admin/profile/handler.handler
+      Events:
+        GetWebAdminProfile:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/profile
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        UpdateWebAdminProfile:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/profile
+            Method: PUT
+            ApiId: !Ref DalTimeHttpApi
+        OptionsWebAdminProfile:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/profile
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPoolId
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/web-admin/profile/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  WebAdminGenerateDummyDataFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: WebAdminGenerateDummyDataFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-WebAdminGenerateDummyDataFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-WebAdminGenerateDummyDataFunction'
+      CodeUri: ../backend
+      Handler: src/functions/web-admin/generate-dummy-data/handler.handler
+      Events:
+        PostWebAdminGenerateDummyData:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/generate-dummy-data
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        OptionsWebAdminGenerateDummyData:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/generate-dummy-data
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/web-admin/generate-dummy-data/handler.ts
         Format: esm
         OutExtension:
           - .js=.mjs
@@ -1745,6 +1759,340 @@ Resources:
       BuildProperties:
         EntryPoints:
           - src/functions/employee/shifts/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  EmployeeAvailableShiftsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailableShiftsFunction'
+      RetentionInDays: 1
+
+  EmployeeAvailableShiftsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: EmployeeAvailableShiftsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-EmployeeAvailableShiftsFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailableShiftsFunction'
+      CodeUri: ../backend
+      Handler: src/functions/employee/available-shifts/handler.handler
+      Events:
+        ListEmployeeAvailableShifts:
+          Type: HttpApi
+          Properties:
+            Path: /employee/available-shifts
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        OptionsEmployeeAvailableShifts:
+          Type: HttpApi
+          Properties:
+            Path: /employee/available-shifts
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/employee/available-shifts/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  NotificationsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
+      RetentionInDays: 1
+
+  NotificationsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: NotificationsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-NotificationsFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
+      CodeUri: ../backend
+      Handler: src/functions/shared/notifications/handler.handler
+      Events:
+        ListWebAdminNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/notifications
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        MarkAllWebAdminNotificationsRead:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/notifications
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        MarkOneWebAdminNotificationRead:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/notifications/{notificationId}
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        OptionsWebAdminNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/notifications
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsWebAdminNotificationById:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/notifications/{notificationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        ListOrgAdminNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /org-admin/notifications
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        MarkAllOrgAdminNotificationsRead:
+          Type: HttpApi
+          Properties:
+            Path: /org-admin/notifications
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        MarkOneOrgAdminNotificationRead:
+          Type: HttpApi
+          Properties:
+            Path: /org-admin/notifications/{notificationId}
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        OptionsOrgAdminNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /org-admin/notifications
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsOrgAdminNotificationById:
+          Type: HttpApi
+          Properties:
+            Path: /org-admin/notifications/{notificationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        ListManagerNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /manager/notifications
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        MarkAllManagerNotificationsRead:
+          Type: HttpApi
+          Properties:
+            Path: /manager/notifications
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        MarkOneManagerNotificationRead:
+          Type: HttpApi
+          Properties:
+            Path: /manager/notifications/{notificationId}
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        OptionsManagerNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /manager/notifications
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsManagerNotificationById:
+          Type: HttpApi
+          Properties:
+            Path: /manager/notifications/{notificationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        ListEmployeeNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /employee/notifications
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        MarkAllEmployeeNotificationsRead:
+          Type: HttpApi
+          Properties:
+            Path: /employee/notifications
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        MarkOneEmployeeNotificationRead:
+          Type: HttpApi
+          Properties:
+            Path: /employee/notifications/{notificationId}
+            Method: PATCH
+            ApiId: !Ref DalTimeHttpApi
+        OptionsEmployeeNotifications:
+          Type: HttpApi
+          Properties:
+            Path: /employee/notifications
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsEmployeeNotificationById:
+          Type: HttpApi
+          Properties:
+            Path: /employee/notifications/{notificationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/shared/notifications/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  EmployeeSwapShiftsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeSwapShiftsFunction'
+      RetentionInDays: 1
+
+  EmployeeSwapShiftsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: EmployeeSwapShiftsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-EmployeeSwapShiftsFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeSwapShiftsFunction'
+      CodeUri: ../backend
+      Handler: src/functions/employee/swap-shifts/handler.handler
+      Events:
+        ListEmployeeSwapShifts:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        PostEmployeeSwapShift:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        ClaimEmployeeSwapShift:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts/{swapId}/claim
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        DeleteEmployeeSwapShift:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts/{swapId}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
+        OptionsEmployeeSwapShifts:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsEmployeeSwapShiftsProxy:
+          Type: HttpApi
+          Properties:
+            Path: /employee/swap-shifts/{proxy+}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/employee/swap-shifts/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  HealthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-HealthFunction'
+      RetentionInDays: 1
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: HealthFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-HealthFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-HealthFunction'
+      CodeUri: ../backend
+      Handler: src/functions/shared/health/handler.handler
+      Events:
+        GetHealth:
+          Type: HttpApi
+          Properties:
+            Path: /health
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsHealth:
+          Type: HttpApi
+          Properties:
+            Path: /health
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/shared/health/handler.ts
         Format: esm
         OutExtension:
           - .js=.mjs

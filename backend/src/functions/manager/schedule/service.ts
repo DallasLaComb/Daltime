@@ -14,8 +14,7 @@ import * as db from './db.js';
 
 const MAX_DRAFTS = 10;
 
-export class ValidationError extends Error {}
-export class ForbiddenError extends Error {}
+import { ValidationError, ForbiddenError } from '../../shared/errors.js';
 
 const DAY_NAMES: DayOfWeek[] = [
   'sunday',
@@ -39,7 +38,7 @@ function currentMonthString(): string {
 }
 
 function inferType(startTime: string): ShiftType {
-  const hour = parseInt(startTime.split(':')[0], 10);
+  const hour = Number.parseInt(startTime.split(':')[0], 10);
   if (hour < 12) return 'morning';
   if (hour < 17) return 'afternoon';
   return 'night';
@@ -123,7 +122,13 @@ async function resolveCallerOrg(sub: string) {
 export async function generateDraftSchedule(
   callerSub: string,
   rawMonth: string | undefined,
-): Promise<{ created: number; unfilled: number; draftCount: number; maxDrafts: number }> {
+): Promise<{
+  created: number;
+  unfilled: number;
+  draftFailed: number;
+  draftCount: number;
+  maxDrafts: number;
+}> {
   const month = parseMonth(rawMonth);
   const { org_id, manager_id } = await resolveCallerOrg(callerSub);
 
@@ -142,9 +147,12 @@ export async function generateDraftSchedule(
     db.listAllShiftsByManager(manager_id, month),
   ]);
 
-  // Build a tally of already-filled slots so we don't double-assign
+  // Build a tally of already-filled slots so we don't double-assign.
+  // Exclude draft_failed sentinels — those slots are still unfilled and should
+  // be retried on re-runs (the sentinel is overwritten idempotently by PutItem).
   const filledCounts = new Map<string, number>();
   for (const s of existingShifts) {
+    if (s.status === 'draft_failed') continue;
     const key = `${s.date}|${s.location_id}|${s.start_time}|${s.end_time}`;
     filledCounts.set(key, (filledCounts.get(key) ?? 0) + 1);
   }
@@ -158,14 +166,20 @@ export async function generateDraftSchedule(
     const newCount = currentDraftCount + 1;
     const now = new Date().toISOString();
     await db.upsertScheduleMeta(org_id, manager_id, month, newCount, now);
-    return { created: 0, unfilled: 0, draftCount: newCount, maxDrafts: MAX_DRAFTS };
+    return { created: 0, unfilled: 0, draftFailed: 0, draftCount: newCount, maxDrafts: MAX_DRAFTS };
   }
 
   if (employees.length === 0) {
     const newCount = currentDraftCount + 1;
     const now = new Date().toISOString();
     await db.upsertScheduleMeta(org_id, manager_id, month, newCount, now);
-    return { created: 0, unfilled: totalUnfilled, draftCount: newCount, maxDrafts: MAX_DRAFTS };
+    return {
+      created: 0,
+      unfilled: totalUnfilled,
+      draftFailed: 0,
+      draftCount: newCount,
+      maxDrafts: MAX_DRAFTS,
+    };
   }
 
   // Load availability for every employee in parallel
@@ -193,7 +207,7 @@ export async function generateDraftSchedule(
   // Sort shifts by date then start_time
   const sortedShifts = [...shiftsNeeded].sort((a, b) => {
     const dc = a.date.localeCompare(b.date);
-    return dc !== 0 ? dc : a.start_time.localeCompare(b.start_time);
+    return dc === 0 ? a.start_time.localeCompare(b.start_time) : dc;
   });
 
   // Track per-day assignment counts this run (in addition to existing shifts)
@@ -207,6 +221,7 @@ export async function generateDraftSchedule(
   const now = new Date().toISOString();
   let created = 0;
   let unfilled = 0;
+  let draftFailed = 0;
 
   for (const needed of sortedShifts) {
     const slotKey = `${needed.date}|${needed.location_id}|${needed.start_time}|${needed.end_time}`;
@@ -222,7 +237,36 @@ export async function generateDraftSchedule(
       });
 
       if (!candidate) {
+        // No eligible employee found for this slot.
+        // Write a deterministic sentinel record so the manager can see unfillable slots
+        // in the UI filtered by "Draft Failed". Using a deterministic SK guarantees
+        // idempotency: re-running the generator overwrites (PutItem) the same item
+        // rather than accumulating duplicates.
+        const failedSuffix = `${manager_id}#${needed.date}#${needed.location_id}#${needed.start_time}#${needed.end_time}`;
+        const sentinelShiftId = `FAILED#${failedSuffix}`;
+        const sentinel: Shift = {
+          PK: `ORG#${org_id}`,
+          SK: `SHIFT#FAILED#${failedSuffix}`,
+          GSI1PK: `MANAGER#${manager_id}`,
+          GSI1SK: needed.date,
+          shift_id: sentinelShiftId,
+          org_id,
+          manager_id,
+          employee_id: '',
+          employee_name: '',
+          location_id: needed.location_id,
+          location_name: needed.location_name,
+          date: needed.date,
+          start_time: needed.start_time,
+          end_time: needed.end_time,
+          type: inferType(needed.start_time),
+          status: 'draft_failed',
+          created_at: now,
+          updated_at: now,
+        };
+        await db.createShift(sentinel);
         unfilled++;
+        draftFailed++;
         continue;
       }
 
@@ -259,7 +303,7 @@ export async function generateDraftSchedule(
   const newDraftCount = currentDraftCount + 1;
   await db.upsertScheduleMeta(org_id, manager_id, month, newDraftCount, now);
 
-  return { created, unfilled, draftCount: newDraftCount, maxDrafts: MAX_DRAFTS };
+  return { created, unfilled, draftFailed, draftCount: newDraftCount, maxDrafts: MAX_DRAFTS };
 }
 
 export async function publishSchedule(

@@ -3,9 +3,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import { getLocation } from '../locations/db.js';
 import * as db from './db.js';
 
-export class ValidationError extends Error {}
-export class ForbiddenError extends Error {}
-export class NotFoundError extends Error {}
+import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; manager_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -53,7 +51,7 @@ export async function listShifts(callerSub: string, rawMonth: string | undefined
     .map((s) => stripKeys(s))
     .sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
-      return dateCompare !== 0 ? dateCompare : a.start_time.localeCompare(b.start_time);
+      return dateCompare === 0 ? a.start_time.localeCompare(b.start_time) : dateCompare;
     });
 }
 
@@ -119,21 +117,18 @@ export async function createShift(
   return stripKeys(item);
 }
 
-export async function updateShift(
-  callerSub: string,
-  shiftId: string,
-  body: {
-    date?: string;
-    start_time?: string;
-    end_time?: string;
-    employee_count?: number;
-    location_id?: string;
-    notes?: string;
-  },
-) {
-  const hasFields = Object.keys(body).length > 0;
-  if (!hasFields) throw new ValidationError('At least one field must be provided');
+type ShiftNeededUpdateBody = {
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  employee_count?: number;
+  location_id?: string;
+  notes?: string;
+};
 
+function validateShiftNeededUpdateBody(body: ShiftNeededUpdateBody): void {
+  if (Object.keys(body).length === 0)
+    throw new ValidationError('At least one field must be provided');
   if (body.date !== undefined) validateDate(body.date);
   if (body.start_time !== undefined) validateTime(body.start_time, 'start_time');
   if (body.end_time !== undefined) validateTime(body.end_time, 'end_time');
@@ -151,6 +146,10 @@ export async function updateShift(
     }
   }
   validateNotes(body.notes);
+}
+
+export async function updateShift(callerSub: string, shiftId: string, body: ShiftNeededUpdateBody) {
+  validateShiftNeededUpdateBody(body);
 
   const { org_id, manager_id } = await resolveCallerOrg(callerSub);
 

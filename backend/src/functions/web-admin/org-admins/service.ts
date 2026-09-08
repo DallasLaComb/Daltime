@@ -2,9 +2,6 @@ import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
   AdminAddUserToGroupCommand,
-  AdminDisableUserCommand,
-  AdminEnableUserCommand,
-  AdminGetUserCommand,
   UsernameExistsException,
   InvalidPasswordException,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -16,40 +13,37 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 import * as orgDb from '../organizations/db.js';
 
-export class ValidationError extends Error {}
-export class ConflictError extends Error {}
-export class NotFoundError extends Error {}
+import { ValidationError, ConflictError, NotFoundError } from '../../shared/errors.js';
+import { EMAIL_REGEX } from '../../shared/validation.js';
+import {
+  enrichWithCognitoStatus,
+  adminDisableUser,
+  adminEnableUser,
+} from '../../shared/cognito.js';
 
 const USER_POOL_ID = process.env['USER_POOL_ID']!;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
 
+/**
+ * List all OrgAdmins for a given org, enriched with live Cognito status.
+ * Returns an array of public-facing records (DynamoDB keys stripped).
+ */
 export async function listOrgAdmins(orgId: string, cognitoClient: CognitoIdentityProviderClient) {
   const items = await db.listOrgAdminsByOrg(orgId);
   const admins = items.map(stripKeys);
 
-  const withStatus = await Promise.all(
-    admins.map(async (admin) => {
-      try {
-        const user = await cognitoClient.send(
-          new AdminGetUserCommand({
-            UserPoolId: USER_POOL_ID,
-            Username: admin.email,
-          }),
-        );
-        return { ...admin, status: user.UserStatus ?? admin.status };
-      } catch {
-        return admin;
-      }
-    }),
-  );
-
-  return withStatus;
+  return enrichWithCognitoStatus(admins, cognitoClient);
 }
 
+/**
+ * Create a new OrgAdmin Cognito user and write their primary and reverse-lookup
+ * DynamoDB records. Stamps `modified_by_web_admin_id` on both records so the
+ * creating WebAdmin is recorded for audit purposes.
+ */
 export async function createOrgAdmin(
   orgId: string,
   body: CreateOrgAdminBody,
   cognitoClient: CognitoIdentityProviderClient,
+  webAdminId: string,
 ) {
   if (!body.email?.trim()) throw new ValidationError('email is required');
   if (!EMAIL_REGEX.test(body.email.trim()))
@@ -109,44 +103,44 @@ export async function createOrgAdmin(
     created_at: now,
   };
 
-  await db.createOrgAdminUser(user);
+  await db.createOrgAdminUser(user, webAdminId);
   await db.incrementOrgAdminCount(orgId);
 
   return stripKeys(user);
 }
 
+/**
+ * Disable an OrgAdmin in both Cognito and DynamoDB. Stamps
+ * `modified_by_web_admin_id` on the DynamoDB records for audit purposes.
+ */
 export async function disableOrgAdmin(
   orgId: string,
   userId: string,
   cognitoClient: CognitoIdentityProviderClient,
+  webAdminId: string,
 ) {
   const lookup = await db.getOrgAdminReverseLookup(userId);
   if (!lookup) throw new NotFoundError(`User '${userId}' not found`);
 
-  await cognitoClient.send(
-    new AdminDisableUserCommand({
-      UserPoolId: USER_POOL_ID,
-      Username: lookup.email,
-    }),
-  );
-
-  await db.disableOrgAdminUser(orgId, userId);
+  await adminDisableUser(cognitoClient, lookup.email);
+  await db.disableOrgAdminUser(orgId, userId, webAdminId);
+  await db.decrementOrgAdminCount(orgId);
 }
 
+/**
+ * Re-enable an OrgAdmin in both Cognito and DynamoDB. Stamps
+ * `modified_by_web_admin_id` on the DynamoDB records for audit purposes.
+ */
 export async function enableOrgAdmin(
   orgId: string,
   userId: string,
   cognitoClient: CognitoIdentityProviderClient,
+  webAdminId: string,
 ) {
   const lookup = await db.getOrgAdminReverseLookup(userId);
   if (!lookup) throw new NotFoundError(`User '${userId}' not found`);
 
-  await cognitoClient.send(
-    new AdminEnableUserCommand({
-      UserPoolId: USER_POOL_ID,
-      Username: lookup.email,
-    }),
-  );
-
-  await db.enableOrgAdminUser(orgId, userId);
+  await adminEnableUser(cognitoClient, lookup.email);
+  await db.enableOrgAdminUser(orgId, userId, webAdminId);
+  await db.incrementOrgAdminCount(orgId);
 }

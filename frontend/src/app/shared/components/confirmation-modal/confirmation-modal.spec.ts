@@ -140,10 +140,10 @@ describe('ConfirmationModalComponent', () => {
 
     const spinner = query<HTMLElement>(
       fixture,
-      '[data-testid="confirmation-modal-confirm"] [role="status"]',
+      '[data-testid="confirmation-modal-confirm"] output',
     );
     expect(spinner).toBeTruthy();
-    expect(spinner.getAttribute('role')).toBe('status');
+    expect(spinner.tagName.toLowerCase()).toBe('output');
   });
 
   // ─── Confirm button disabled when saving ────────────────────────────────────

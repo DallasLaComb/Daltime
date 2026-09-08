@@ -1,5 +1,6 @@
 export type ShiftType = 'morning' | 'afternoon' | 'night';
-export type ShiftStatus = 'draft' | 'published';
+/** Shift status values. 'draft_failed' marks an unfillable slot sentinel written during draft generation. */
+export type ShiftStatus = 'draft' | 'published' | 'draft_failed';
 
 export interface Shift {
   PK: string;
@@ -20,4 +21,6 @@ export interface Shift {
   status: ShiftStatus;
   created_at: string;
   updated_at: string;
+  /** True when the assigned employee has made this shift available for pickup by peers. */
+  available_for_pickup?: boolean;
 }

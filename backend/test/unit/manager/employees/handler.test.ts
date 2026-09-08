@@ -2,15 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
 vi.mock('../../../../src/functions/manager/employees/service.js', () => ({
-  ValidationError: class ValidationError extends Error {},
-  ConflictError: class ConflictError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ForbiddenError: class ForbiddenError extends Error {},
   listEmployees: vi.fn(),
   createEmployee: vi.fn(),
   updateEmployee: vi.fn(),
   disableEmployee: vi.fn(),
   enableEmployee: vi.fn(),
+  getEmployeeAvailabilityForManager: vi.fn(),
+  getEmployeeAvailabilityOverridesForManager: vi.fn(),
 }));
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
@@ -27,16 +25,15 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 }));
 
 import { handler } from '../../../../src/functions/manager/employees/handler.js';
+import { ValidationError, ConflictError, NotFoundError, ForbiddenError } from '../../../../src/functions/shared/errors.js';
 import {
-  ValidationError,
-  ConflictError,
-  NotFoundError,
-  ForbiddenError,
   listEmployees,
   createEmployee,
   updateEmployee,
   disableEmployee,
   enableEmployee,
+  getEmployeeAvailabilityForManager,
+  getEmployeeAvailabilityOverridesForManager,
 } from '../../../../src/functions/manager/employees/service.js';
 
 // ─── Factories ────────────────────────────────────────────────────────────────
@@ -386,6 +383,168 @@ describe('DELETE /manager/employees/{employeeId} — disable', () => {
       buildApiGwEvent({
         method: 'DELETE',
         routeKey: 'DELETE /manager/employees/{employeeId}',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(500);
+    expect(body(result)).toEqual({ error: 'An unexpected error occurred' });
+  });
+});
+
+// ─── OPTIONS /manager/employees/{employeeId}/availability ─────────────────────
+
+describe('OPTIONS /manager/employees/{employeeId}/availability — CORS preflight', () => {
+  it('returns 200 with CORS headers', async () => {
+    // Confirms the shared OPTIONS branch handles the availability sub-path correctly.
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'OPTIONS',
+        routeKey: 'OPTIONS /manager/employees/{employeeId}/availability',
+        rawPath: '/manager/employees/emp-sub-123/availability',
+        pathParameters: { employeeId: 'emp-sub-123' },
+        headers: { origin: 'https://dev.daltime.com' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(200);
+  });
+});
+
+// ─── GET /manager/employees/{employeeId}/availability ─────────────────────────
+
+describe('GET /manager/employees/{employeeId}/availability — read employee availability', () => {
+  const mockAvailability = {
+    employee_id: 'emp-sub-123',
+    schedule: { monday: ['09:00', '17:00'] },
+    updated_at: '2025-01-01T00:00:00.000Z',
+  };
+
+  it('returns 200 with availability payload', async () => {
+    // Manager can read the recurring availability for any employee they own.
+    vi.mocked(getEmployeeAvailabilityForManager).mockResolvedValue(mockAvailability);
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability',
+        rawPath: '/manager/employees/emp-sub-123/availability',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(200);
+    expect(body(result)).toEqual(mockAvailability);
+  });
+
+  it('returns 404 when employee is not found', async () => {
+    vi.mocked(getEmployeeAvailabilityForManager).mockRejectedValue(
+      new NotFoundError("Employee 'emp-unknown' not found"),
+    );
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability',
+        rawPath: '/manager/employees/emp-unknown/availability',
+        pathParameters: { employeeId: 'emp-unknown' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(404);
+    expect(body(result)).toEqual({ error: "Employee 'emp-unknown' not found" });
+  });
+
+  it('returns 403 when employee belongs to a different manager', async () => {
+    vi.mocked(getEmployeeAvailabilityForManager).mockRejectedValue(
+      new ForbiddenError('Not authorized'),
+    );
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability',
+        rawPath: '/manager/employees/emp-sub-123/availability',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(403);
+    expect(body(result)).toEqual({ error: 'Not authorized' });
+  });
+
+  it('returns 500 when service throws unexpected error', async () => {
+    vi.mocked(getEmployeeAvailabilityForManager).mockRejectedValue(new Error('DynamoDB failure'));
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability',
+        rawPath: '/manager/employees/emp-sub-123/availability',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(500);
+    expect(body(result)).toEqual({ error: 'An unexpected error occurred' });
+  });
+});
+
+// ─── GET /manager/employees/{employeeId}/availability/overrides ───────────────
+
+describe('GET /manager/employees/{employeeId}/availability/overrides — read employee overrides', () => {
+  const mockOverrides = {
+    employee_id: 'emp-sub-123',
+    overrides: { '2025-07-04': 'unavailable' },
+    updated_at: '2025-01-01T00:00:00.000Z',
+  };
+
+  it('returns 200 with overrides payload', async () => {
+    // Manager can read date-specific availability overrides for any employee they own.
+    vi.mocked(getEmployeeAvailabilityOverridesForManager).mockResolvedValue(mockOverrides);
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability/overrides',
+        rawPath: '/manager/employees/emp-sub-123/availability/overrides',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(200);
+    expect(body(result)).toEqual(mockOverrides);
+  });
+
+  it('returns 404 when employee is not found', async () => {
+    vi.mocked(getEmployeeAvailabilityOverridesForManager).mockRejectedValue(
+      new NotFoundError("Employee 'emp-unknown' not found"),
+    );
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability/overrides',
+        rawPath: '/manager/employees/emp-unknown/availability/overrides',
+        pathParameters: { employeeId: 'emp-unknown' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(404);
+    expect(body(result)).toEqual({ error: "Employee 'emp-unknown' not found" });
+  });
+
+  it('returns 403 when employee belongs to a different manager', async () => {
+    vi.mocked(getEmployeeAvailabilityOverridesForManager).mockRejectedValue(
+      new ForbiddenError('Not authorized'),
+    );
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability/overrides',
+        rawPath: '/manager/employees/emp-sub-123/availability/overrides',
+        pathParameters: { employeeId: 'emp-sub-123' },
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+    expect(result.statusCode).toBe(403);
+    expect(body(result)).toEqual({ error: 'Not authorized' });
+  });
+
+  it('returns 500 when service throws unexpected error', async () => {
+    vi.mocked(getEmployeeAvailabilityOverridesForManager).mockRejectedValue(
+      new Error('DynamoDB failure'),
+    );
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        routeKey: 'GET /manager/employees/{employeeId}/availability/overrides',
+        rawPath: '/manager/employees/emp-sub-123/availability/overrides',
         pathParameters: { employeeId: 'emp-sub-123' },
       }),
     )) as APIGatewayProxyStructuredResultV2;

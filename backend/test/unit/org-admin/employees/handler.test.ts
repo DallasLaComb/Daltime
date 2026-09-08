@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
 vi.mock('../../../../src/functions/org-admin/employees/service.js', () => ({
-  ValidationError: class ValidationError extends Error {},
-  ConflictError: class ConflictError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ForbiddenError: class ForbiddenError extends Error {},
   listEmployees: vi.fn(),
   createEmployee: vi.fn(),
   updateEmployee: vi.fn(),
@@ -27,11 +23,8 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 }));
 
 import { handler } from '../../../../src/functions/org-admin/employees/handler.js';
+import { ValidationError, ConflictError, NotFoundError, ForbiddenError } from '../../../../src/functions/shared/errors.js';
 import {
-  ValidationError,
-  ConflictError,
-  NotFoundError,
-  ForbiddenError,
   listEmployees,
   createEmployee,
   updateEmployee,

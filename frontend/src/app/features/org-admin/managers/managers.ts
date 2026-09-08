@@ -1,20 +1,32 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { USER_STATUS_COLOR_MAP, getUserStatusLabel } from '../../../core/utils/user-status';
 import { ManagersService } from './managers.service';
 import { ManagerLocationsService } from './manager-locations.service';
 import { OrgAdminLocationsService } from '../locations/locations.service';
+import { EmployeeCrudBaseComponent } from '../../../core/utils/employee-crud-base';
 import type { ManagerResponse } from '../../../core/models/manager.model';
 import type { UserLocationResponse } from '../../../core/models/user-location.model';
 import type { ManagerLocation } from '../../../core/models/manager-location.model';
-import type { ColumnDef } from '@common-daltime';
+import type {
+  ColumnDef,
+  AssignedLocation,
+  RegisterEmployeeData,
+  EditEmployeeData,
+} from '@common-daltime';
 import {
   CrudPageComponent,
   DataTableComponent,
   CardListComponent,
   StatusBadgeComponent,
-  ConfirmationModalComponent,
   ButtonComponent,
+  LocationsModalComponent,
+  RegisterEmployeeModalComponent,
+  EditEmployeeModalComponent,
+  EmployeeStatusModalsComponent,
+  EmployeeActionsComponent,
 } from '@common-daltime';
+import type { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-managers',
@@ -24,49 +36,25 @@ import {
     DataTableComponent,
     CardListComponent,
     StatusBadgeComponent,
-    ConfirmationModalComponent,
     ButtonComponent,
+    LocationsModalComponent,
+    RegisterEmployeeModalComponent,
+    EditEmployeeModalComponent,
+    EmployeeStatusModalsComponent,
+    EmployeeActionsComponent,
   ],
   templateUrl: './managers.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ManagersComponent {
+export class ManagersComponent extends EmployeeCrudBaseComponent<ManagerResponse> {
   private readonly managersService = inject(ManagersService);
   private readonly managerLocationsService = inject(ManagerLocationsService);
   private readonly orgLocationsService = inject(OrgAdminLocationsService);
 
   readonly managers = signal<ManagerResponse[]>([]);
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
 
-  // Register modal
-  readonly showRegisterModal = signal(false);
-  readonly saving = signal(false);
-  readonly modalError = signal<string | null>(null);
-  readonly formFirstName = signal('');
-  readonly formLastName = signal('');
-  readonly formEmail = signal('');
-  readonly formPhone = signal('');
-  readonly formPassword = signal('');
-  readonly showPassword = signal(false);
-  readonly formSubmitted = signal(false);
-
-  // Edit modal
-  readonly showEditModal = signal(false);
+  // Edit modal entity
   readonly editingManager = signal<ManagerResponse | null>(null);
-  readonly editFirstName = signal('');
-  readonly editLastName = signal('');
-  readonly editPhone = signal('');
-  readonly editSubmitted = signal(false);
-  readonly editError = signal<string | null>(null);
-
-  // Disable modal
-  readonly showDisableModal = signal(false);
-  readonly disablingManager = signal<ManagerResponse | null>(null);
-
-  // Enable modal
-  readonly showEnableModal = signal(false);
-  readonly enablingManager = signal<ManagerResponse | null>(null);
 
   // Locations modal
   readonly showLocationsModal = signal(false);
@@ -75,16 +63,10 @@ export class ManagersComponent {
   readonly allOrgLocations = signal<ManagerLocation[]>([]);
   readonly locationsLoading = signal(false);
   readonly locationsError = signal<string | null>(null);
-  readonly selectedLocationId = signal('');
   readonly assigning = signal(false);
   readonly assignError = signal<string | null>(null);
-
-  // Remove-location confirmation
-  readonly showRemoveLocationModal = signal(false);
-  readonly removingLocation = signal<UserLocationResponse | null>(null);
   readonly removing = signal(false);
 
-  /** Locations not yet assigned to this manager. */
   readonly availableLocations = computed(() => {
     const assignedIds = new Set(this.assignedLocations().map((a) => a.location_id));
     return this.allOrgLocations().filter((l) => !assignedIds.has(l.location_id));
@@ -102,20 +84,27 @@ export class ManagersComponent {
   ];
 
   readonly trackById = (_index: number, manager: ManagerResponse): string => manager.manager_id;
-  readonly trackByLocationId = (_index: number, loc: UserLocationResponse): string =>
-    loc.location_id;
-
-  readonly statusColorMap: Record<string, string> = {
-    CONFIRMED: 'badge-dt-success',
-    DISABLED: 'badge-dt-secondary',
-    FORCE_CHANGE_PASSWORD: 'badge-dt-warning',
-  };
+  readonly statusColorMap = USER_STATUS_COLOR_MAP;
+  readonly statusLabel = getUserStatusLabel;
 
   constructor() {
+    super();
     this.load();
   }
 
-  load(): void {
+  protected override extractId(manager: ManagerResponse): string {
+    return manager.manager_id;
+  }
+
+  protected override disableEntity(id: string): Observable<void> {
+    return this.managersService.disable(id);
+  }
+
+  protected override enableEntity(id: string): Observable<void> {
+    return this.managersService.enable(id);
+  }
+
+  protected override load(): void {
     this.loading.set(true);
     this.error.set(null);
     this.managersService.getAll().subscribe({
@@ -130,54 +119,18 @@ export class ManagersComponent {
     });
   }
 
-  statusLabel(status: string): string {
-    if (status === 'CONFIRMED') return 'Active';
-    if (status === 'DISABLED') return 'Disabled';
-    return 'Pending';
-  }
-
   // ─── Register ────────────────────────────────────────────────────────
 
-  openRegisterModal(): void {
-    this.formFirstName.set('');
-    this.formLastName.set('');
-    this.formEmail.set('');
-    this.formPhone.set('');
-    this.formPassword.set('');
-    this.showPassword.set(false);
-    this.formSubmitted.set(false);
-    this.modalError.set(null);
-    this.showRegisterModal.set(true);
-  }
-
-  closeRegisterModal(): void {
-    this.showRegisterModal.set(false);
-  }
-
-  togglePassword(): void {
-    this.showPassword.update((v) => !v);
-  }
-
-  register(): void {
-    this.formSubmitted.set(true);
-    if (
-      !this.formFirstName().trim() ||
-      !this.formLastName().trim() ||
-      !this.formEmail().trim() ||
-      !this.formPassword().trim()
-    )
-      return;
-
+  handleRegister(data: RegisterEmployeeData): void {
     this.saving.set(true);
     this.modalError.set(null);
-
     this.managersService
       .create({
-        first_name: this.formFirstName(),
-        last_name: this.formLastName(),
-        email: this.formEmail(),
-        phone: this.formPhone() || undefined,
-        temp_password: this.formPassword(),
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone || undefined,
+        temp_password: data.temp_password,
       })
       .subscribe({
         next: () => {
@@ -200,32 +153,24 @@ export class ManagersComponent {
 
   openEditModal(manager: ManagerResponse): void {
     this.editingManager.set(manager);
-    this.editFirstName.set(manager.first_name);
-    this.editLastName.set(manager.last_name);
-    this.editPhone.set(manager.phone);
-    this.editSubmitted.set(false);
     this.editError.set(null);
     this.showEditModal.set(true);
   }
 
-  closeEditModal(): void {
+  override closeEditModal(): void {
     this.showEditModal.set(false);
     this.editingManager.set(null);
   }
 
-  saveEdit(): void {
-    this.editSubmitted.set(true);
-    if (!this.editFirstName().trim() || !this.editLastName().trim()) return;
-
+  handleSaveEdit(data: EditEmployeeData): void {
     this.saving.set(true);
     this.editError.set(null);
-
     const manager = this.editingManager()!;
     this.managersService
       .update(manager.manager_id, {
-        first_name: this.editFirstName(),
-        last_name: this.editLastName(),
-        phone: this.editPhone(),
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
       })
       .subscribe({
         next: () => {
@@ -240,77 +185,17 @@ export class ManagersComponent {
       });
   }
 
-  // ─── Disable ─────────────────────────────────────────────────────────
-
-  openDisableModal(manager: ManagerResponse): void {
-    this.disablingManager.set(manager);
-    this.showDisableModal.set(true);
-  }
-
-  closeDisableModal(): void {
-    this.showDisableModal.set(false);
-    this.disablingManager.set(null);
-  }
-
-  confirmDisable(): void {
-    const manager = this.disablingManager();
-    if (!manager) return;
-
-    this.saving.set(true);
-    this.managersService.disable(manager.manager_id).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.closeDisableModal();
-        this.load();
-      },
-      error: () => {
-        this.saving.set(false);
-      },
-    });
-  }
-
-  // ─── Enable ──────────────────────────────────────────────────────────
-
-  openEnableModal(manager: ManagerResponse): void {
-    this.enablingManager.set(manager);
-    this.showEnableModal.set(true);
-  }
-
-  closeEnableModal(): void {
-    this.showEnableModal.set(false);
-    this.enablingManager.set(null);
-  }
-
-  confirmEnable(): void {
-    const manager = this.enablingManager();
-    if (!manager) return;
-
-    this.saving.set(true);
-    this.managersService.enable(manager.manager_id).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.closeEnableModal();
-        this.load();
-      },
-      error: () => {
-        this.saving.set(false);
-      },
-    });
-  }
-
   // ─── Locations ───────────────────────────────────────────────────────
 
   openLocationsModal(manager: ManagerResponse): void {
     this.locationsManager.set(manager);
     this.assignedLocations.set([]);
     this.allOrgLocations.set([]);
-    this.selectedLocationId.set('');
     this.locationsError.set(null);
     this.assignError.set(null);
     this.locationsLoading.set(true);
     this.showLocationsModal.set(true);
 
-    // Load in parallel: assigned locations + all org locations
     this.managerLocationsService.getAll(manager.manager_id).subscribe({
       next: (assigned) => this.assignedLocations.set(assigned),
       error: () => this.locationsError.set('Failed to load assigned locations'),
@@ -333,18 +218,14 @@ export class ManagersComponent {
     this.locationsManager.set(null);
   }
 
-  assignLocation(): void {
+  handleAssignRequested(locationId: string): void {
     const manager = this.locationsManager();
-    const locationId = this.selectedLocationId();
-    if (!manager || !locationId) return;
-
+    if (!manager) return;
     this.assigning.set(true);
     this.assignError.set(null);
-
     this.managerLocationsService.assign(manager.manager_id, locationId).subscribe({
       next: (assignment) => {
         this.assignedLocations.update((list) => [...list, assignment]);
-        this.selectedLocationId.set('');
         this.assigning.set(false);
       },
       error: (err) => {
@@ -354,23 +235,9 @@ export class ManagersComponent {
     });
   }
 
-  openRemoveLocationModal(loc: UserLocationResponse): void {
-    this.removingLocation.set(loc);
-    this.showLocationsModal.set(false);
-    this.showRemoveLocationModal.set(true);
-  }
-
-  closeRemoveLocationModal(): void {
-    this.showRemoveLocationModal.set(false);
-    this.removingLocation.set(null);
-    this.showLocationsModal.set(true);
-  }
-
-  confirmRemoveLocation(): void {
+  handleRemoveConfirmed(loc: AssignedLocation): void {
     const manager = this.locationsManager();
-    const loc = this.removingLocation();
-    if (!manager || !loc) return;
-
+    if (!manager) return;
     this.removing.set(true);
     this.managerLocationsService.remove(manager.manager_id, loc.location_id).subscribe({
       next: () => {
@@ -378,9 +245,6 @@ export class ManagersComponent {
           list.filter((a) => a.location_id !== loc.location_id),
         );
         this.removing.set(false);
-        this.showRemoveLocationModal.set(false);
-        this.removingLocation.set(null);
-        this.showLocationsModal.set(true);
       },
       error: () => {
         this.removing.set(false);

@@ -3,7 +3,7 @@
 
   @if (loading()) {
     <div class="flex justify-center py-16">
-      <span class="dt-spinner text-dt-primary" role="status"></span>
+      <output class="dt-spinner text-dt-primary"></output>
     </div>
   } @else if (error()) {
     <div
@@ -72,7 +72,7 @@
               data-testid="edit-address-input"
               [value]="editAddress()"
               (input)="editAddress.set($any($event.target).value)"
-              autocomplete="street-address"
+              autocomplete="address-line1"
             />
             @if (editSubmitted() && !editAddress().trim()) {
               <p class="input-feedback" data-testid="address-error">Address is required</p>

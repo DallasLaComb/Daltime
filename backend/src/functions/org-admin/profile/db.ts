@@ -1,18 +1,11 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, TABLE_NAME } from '../../shared/dynamo.js';
+import { docClient, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
 import type { OrgAdminUser } from '../../shared/models/web-admin/org-admin-user.model.js';
 
 export async function getCallerLookup(
   userId: string,
 ): Promise<{ org_id: string; user_id: string } | null> {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: 'METADATA' },
-    }),
-  );
-  if (!result.Item) return null;
-  return result.Item as { org_id: string; user_id: string };
+  return getMetadataRecord(userId);
 }
 
 export async function getOrgAdminRecord(

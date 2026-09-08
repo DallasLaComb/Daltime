@@ -1,15 +1,8 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { getCallerSub } from '../../shared/auth.js';
+import { ok, badRequest, forbidden, setRequestOrigin } from '../../shared/response.js';
+import { mapHandlerError } from '../../shared/errors.js';
 import {
-  ok,
-  badRequest,
-  forbidden,
-  internalError,
-  setRequestOrigin,
-} from '../../shared/response.js';
-import {
-  ValidationError,
-  ForbiddenError,
   generateDraftSchedule,
   publishSchedule,
   getDraftSummary,
@@ -20,7 +13,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const method = event.requestContext.http.method;
   const rawPath = event.rawPath;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    setRequestOrigin(event.headers?.['origin']);
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
@@ -52,9 +48,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
     return badRequest(`Unhandled route: ${method} ${rawPath}`);
   } catch (err) {
-    if (err instanceof ValidationError) return badRequest((err as Error).message);
-    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
-    console.error('Unhandled error in manager/schedule handler:', err);
-    return internalError('An unexpected error occurred');
+    return mapHandlerError(err, 'manager schedule handler');
   }
 };

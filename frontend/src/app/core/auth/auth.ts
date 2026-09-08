@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import {
@@ -17,6 +17,15 @@ const TOKEN_KEYS = {
   id: 'daltime_id_token',
   refresh: 'daltime_refresh_token',
 } as const;
+
+const AUTH_ERROR_MAP: Record<string, string> = {
+  NotAuthorizedException: 'Incorrect email or password.',
+  UserNotFoundException: 'Incorrect email or password.',
+  UserNotConfirmedException: 'Account not confirmed. Contact your administrator.',
+  CodeMismatchException: 'Invalid verification code.',
+  ExpiredCodeException: 'Verification code has expired. Please request a new one.',
+  LimitExceededException: 'Too many attempts. Please try again later.',
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -40,6 +49,13 @@ export class AuthService {
   private readonly _orgId = signal<string | null>(null);
   readonly orgId = this._orgId.asReadonly();
 
+  // Stores the authenticated user's given name and family name from Cognito attributes
+  // so any view (e.g. navbar) can display a personalised greeting without an extra API call.
+  private readonly _firstName = signal('');
+  private readonly _lastName = signal('');
+  readonly firstName = this._firstName.asReadonly();
+  readonly lastName = this._lastName.asReadonly();
+
   // --- Challenge state (for NEW_PASSWORD_REQUIRED flow) ---
   private challengeSession: string | null = null;
   private challengeEmail: string | null = null;
@@ -62,7 +78,7 @@ export class AuthService {
 
       await this.getUserAttributes();
 
-      if (role && ['/', '/login'].includes(window.location.pathname)) {
+      if (role && ['/', '/login'].includes(globalThis.location.pathname)) {
         this.router.navigate([ROLE_DASHBOARD_MAP[role]]);
       }
     }
@@ -70,7 +86,10 @@ export class AuthService {
     this._authReady.set(true);
   }
 
-  async login(email: string, password: string): Promise<{ success: boolean; challenge?: string; error?: string }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; challenge?: string; error?: string }> {
     try {
       const response = await this.cognitoClient.send(
         new InitiateAuthCommand({
@@ -138,6 +157,10 @@ export class AuthService {
     this.accessToken = null;
     this.idToken = null;
     this._orgId.set(null);
+    // Clear name signals so a subsequent login as a different user doesn't flash
+    // the previous user's name before the new attributes are fetched.
+    this._firstName.set('');
+    this._lastName.set('');
     this.challengeSession = null;
     this.challengeEmail = null;
 
@@ -168,6 +191,13 @@ export class AuthService {
       if (orgIdAttr?.Value) {
         this._orgId.set(orgIdAttr.Value);
       }
+
+      // Extract the user's given_name and family_name so the navbar can display a
+      // personalised name without a separate Cognito call on every navigation event.
+      const firstNameAttr = response.UserAttributes?.find((attr) => attr.Name === 'given_name');
+      const lastNameAttr = response.UserAttributes?.find((attr) => attr.Name === 'family_name');
+      if (firstNameAttr?.Value) this._firstName.set(firstNameAttr.Value);
+      if (lastNameAttr?.Value) this._lastName.set(lastNameAttr.Value);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('GetUser failed:', message);
@@ -192,7 +222,11 @@ export class AuthService {
     }
   }
 
-  private async storeTokens(result: { AccessToken?: string; IdToken?: string; RefreshToken?: string }): Promise<void> {
+  private async storeTokens(result: {
+    AccessToken?: string;
+    IdToken?: string;
+    RefreshToken?: string;
+  }): Promise<void> {
     this.accessToken = result.AccessToken ?? null;
     this.idToken = result.IdToken ?? null;
 
@@ -238,17 +272,10 @@ export class AuthService {
   }
 
   private mapAuthError(err: unknown): string {
-    if (err instanceof Error) {
-      if (err.name === 'NotAuthorizedException') return 'Incorrect email or password.';
-      if (err.name === 'UserNotFoundException') return 'Incorrect email or password.';
-      if (err.name === 'UserNotConfirmedException') return 'Account not confirmed. Contact your administrator.';
-      if (err.name === 'InvalidPasswordException') return err.message;
-      if (err.name === 'InvalidParameterException') return err.message;
-      if (err.name === 'CodeMismatchException') return 'Invalid verification code.';
-      if (err.name === 'ExpiredCodeException') return 'Verification code has expired. Please request a new one.';
-      if (err.name === 'LimitExceededException') return 'Too many attempts. Please try again later.';
-    }
-    return 'An unexpected error occurred. Please try again.';
+    if (!(err instanceof Error)) return 'An unexpected error occurred. Please try again.';
+    if (err.name === 'InvalidPasswordException' || err.name === 'InvalidParameterException')
+      return err.message;
+    return AUTH_ERROR_MAP[err.name] ?? 'An unexpected error occurred. Please try again.';
   }
 
   async forgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
@@ -265,7 +292,11 @@ export class AuthService {
     }
   }
 
-  async confirmForgotPassword(email: string, code: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  async confirmForgotPassword(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       await this.cognitoClient.send(
         new ConfirmForgotPasswordCommand({

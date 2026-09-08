@@ -65,7 +65,7 @@
   @if (activeTab() === 'weekly') {
     @if (loading()) {
       <div class="flex justify-center py-16">
-        <span class="dt-spinner text-dt-primary" role="status"></span>
+        <output class="dt-spinner text-dt-primary"></output>
       </div>
     } @else if (error()) {
       <div
@@ -272,7 +272,7 @@
   @if (activeTab() === 'specific') {
     @if (overridesLoading()) {
       <div class="flex justify-center py-16">
-        <span class="dt-spinner text-dt-primary" role="status"></span>
+        <output class="dt-spinner text-dt-primary"></output>
       </div>
     } @else if (overridesError()) {
       <div

@@ -48,10 +48,7 @@
         "s3:GetObject",
         "s3:DeleteObject"
       ],
-      "Resource": [
-        "arn:aws:s3:::daltime-*",
-        "arn:aws:s3:::daltime-*/*"
-      ]
+      "Resource": ["arn:aws:s3:::daltime-*", "arn:aws:s3:::daltime-*/*"]
     },
     {
       "Sid": "LambdaManagement",
@@ -67,7 +64,9 @@
         "lambda:TagResource",
         "lambda:UntagResource",
         "lambda:AddPermission",
-        "lambda:RemovePermission"
+        "lambda:RemovePermission",
+        "lambda:PutFunctionConcurrency",
+        "lambda:DeleteFunctionConcurrency"
       ],
       "Resource": "arn:aws:lambda:*:{{ACCOUNT_ID}}:function:daltime-*"
     },

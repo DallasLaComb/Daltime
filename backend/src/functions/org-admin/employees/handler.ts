@@ -10,17 +10,11 @@ import {
   created,
   noContent,
   badRequest,
-  notFound,
-  conflict,
-  forbidden,
-  internalError,
   setRequestOrigin,
+  parseBody,
 } from '../../shared/response.js';
+import { mapHandlerError } from '../../shared/errors.js';
 import {
-  ValidationError,
-  ConflictError,
-  NotFoundError,
-  ForbiddenError,
   listEmployees,
   createEmployee,
   updateEmployee,
@@ -30,63 +24,52 @@ import {
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
+async function handlePost(callerSub: string, rawBody: string | undefined) {
+  const parsed = parseBody<CreateEmployeeBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  return created(await createEmployee(callerSub, parsed.data, cognitoClient));
+}
+
+async function handlePut(
+  callerSub: string,
+  employeeId: string | undefined,
+  rawBody: string | undefined,
+) {
+  if (!employeeId) return badRequest('employeeId path parameter is required');
+  const parsed = parseBody<UpdateEmployeeBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  return ok(await updateEmployee(callerSub, employeeId, parsed.data, cognitoClient));
+}
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const employeeId = event.pathParameters?.employeeId;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    setRequestOrigin(event.headers?.['origin']);
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') {
-      return ok(await listEmployees(callerSub, cognitoClient));
-    }
-
-    if (method === 'POST') {
-      if (!event.body) return badRequest('Request body is required');
-      let body: CreateEmployeeBody;
-      try {
-        body = JSON.parse(event.body) as CreateEmployeeBody;
-      } catch {
-        return badRequest('Invalid JSON body');
-      }
-      return created(await createEmployee(callerSub, body, cognitoClient));
-    }
-
-    if (method === 'PUT') {
-      if (!employeeId) return badRequest('employeeId path parameter is required');
-      if (!event.body) return badRequest('Request body is required');
-      let body: UpdateEmployeeBody;
-      try {
-        body = JSON.parse(event.body) as UpdateEmployeeBody;
-      } catch {
-        return badRequest('Invalid JSON body');
-      }
-      return ok(await updateEmployee(callerSub, employeeId, body, cognitoClient));
-    }
-
+    if (method === 'GET') return ok(await listEmployees(callerSub, cognitoClient));
+    if (method === 'POST') return await handlePost(callerSub, event.body);
+    if (method === 'PUT') return await handlePut(callerSub, employeeId, event.body);
     if (method === 'DELETE') {
       if (!employeeId) return badRequest('employeeId path parameter is required');
       await disableEmployee(callerSub, employeeId, cognitoClient);
       return noContent();
     }
-
     if (method === 'PATCH') {
       if (!employeeId) return badRequest('employeeId path parameter is required');
       await enableEmployee(callerSub, employeeId, cognitoClient);
       return noContent();
     }
-
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    if (err instanceof ValidationError) return badRequest((err as Error).message);
-    if (err instanceof ConflictError) return conflict((err as Error).message);
-    if (err instanceof NotFoundError) return notFound((err as Error).message);
-    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
-    console.error('Unhandled error in employees handler:', err);
-    return internalError('An unexpected error occurred');
+    return mapHandlerError(err, 'org-admin employees handler');
   }
 };

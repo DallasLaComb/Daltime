@@ -9,65 +9,88 @@ import {
   noContent,
   badRequest,
   notFound,
-  internalError,
   setRequestOrigin,
+  parseBody,
 } from '../../shared/response.js';
-import { ValidationError, listOrganizations, getOrganization, createOrganization, updateOrganization, deleteOrganization } from './service.js';
+import { mapHandlerError } from '../../shared/errors.js';
+import { requireWebAdminWithLookup } from '../../shared/auth.js';
+import {
+  listOrganizations,
+  getOrganization,
+  createOrganization,
+  updateOrganization,
+  deleteOrganization,
+} from './service.js';
+
+/** Handle POST /organizations — create a new organization. */
+async function handlePost(rawBody: string | undefined, webAdminId: string) {
+  const parsed = parseBody<CreateOrganizationBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  return created(await createOrganization(parsed.data, webAdminId));
+}
+
+/** Handle PUT /organizations/{orgId} — update an existing organization. */
+async function handlePut(orgId: string, rawBody: string | undefined, webAdminId: string) {
+  const parsed = parseBody<UpdateOrganizationBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  const org = await updateOrganization(orgId, parsed.data, webAdminId);
+  return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+}
+
+/** Handle collection-level routes (no orgId in path). */
+async function handleCollectionRoute(
+  method: string,
+  rawBody: string | undefined,
+  rawPath: string,
+  webAdminId: string,
+) {
+  if (method === 'GET') return ok(await listOrganizations());
+  if (method === 'POST') return await handlePost(rawBody, webAdminId);
+  return badRequest(`Unhandled route: ${method} ${rawPath}`);
+}
+
+/** Handle resource-level routes (orgId present in path). */
+async function handleResourceRoute(
+  method: string,
+  orgId: string,
+  rawBody: string | undefined,
+  rawPath: string,
+  webAdminId: string,
+) {
+  if (method === 'GET') {
+    const org = await getOrganization(orgId);
+    return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+  }
+  if (method === 'PUT') return await handlePut(orgId, rawBody, webAdminId);
+  if (method === 'DELETE') {
+    const deleted = await deleteOrganization(orgId, webAdminId);
+    return deleted ? noContent() : notFound(`Organization '${orgId}' not found`);
+  }
+  return badRequest(`Unhandled route: ${method} ${rawPath}`);
+}
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const orgId = event.pathParameters?.orgId;
 
   if (method === 'OPTIONS') {
+    setRequestOrigin(event.headers?.['origin']);
     return ok('');
   }
 
   setRequestOrigin(event.headers?.['origin']);
 
   try {
-    if (method === 'GET' && !orgId) {
-      return ok(await listOrganizations());
-    }
+    // Fail closed: verify the caller is in the WebAdmin Cognito group AND has
+    // a provisioned, ACTIVE WebAdmin record in DynamoDB before any query or
+    // mutation is allowed. Returns the caller's `web_admin_id` for audit
+    // stamping on every mutating operation.
+    const caller = await requireWebAdminWithLookup(event);
 
-    if (method === 'POST' && !orgId) {
-      if (!event.body) return badRequest('Request body is required');
-      let body: CreateOrganizationBody;
-      try {
-        body = JSON.parse(event.body) as CreateOrganizationBody;
-      } catch {
-        return badRequest('Invalid JSON body');
-      }
-      return created(await createOrganization(body));
-    }
-
-    if (method === 'GET' && orgId) {
-      const org = await getOrganization(orgId);
-      return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
-    }
-
-    if (method === 'PUT' && orgId) {
-      if (!event.body) return badRequest('Request body is required');
-      let body: UpdateOrganizationBody;
-      try {
-        body = JSON.parse(event.body) as UpdateOrganizationBody;
-      } catch {
-        return badRequest('Invalid JSON body');
-      }
-      const org = await updateOrganization(orgId, body);
-      return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
-    }
-
-    if (method === 'DELETE' && orgId) {
-      const deleted = await deleteOrganization(orgId);
-      return deleted ? noContent() : notFound(`Organization '${orgId}' not found`);
-    }
-
-    return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return badRequest(error.message);
-    }
-    console.error('Unhandled error in organizations handler:', error);
-    return internalError('An unexpected error occurred');
+    if (!orgId)
+      return await handleCollectionRoute(method, event.body, event.rawPath, caller.web_admin_id);
+    return await handleResourceRoute(method, orgId, event.body, event.rawPath, caller.web_admin_id);
+  } catch (err) {
+    return mapHandlerError(err, 'web-admin organizations handler');
   }
 };

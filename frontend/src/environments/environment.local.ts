@@ -1,4 +1,4 @@
-// Local development — frontend hits the local SAM API server on port 3000
+// Local development — frontend hits the local SAM API server on port 47200
 export const environment = {
   name: 'local',
   production: false,
@@ -9,6 +9,6 @@ export const environment = {
     domain: 'daltime-dev.auth.us-east-1.amazoncognito.com',
   },
   api: {
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:47200',
   },
 };

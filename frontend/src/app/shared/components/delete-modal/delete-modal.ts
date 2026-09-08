@@ -62,18 +62,16 @@ export class DeleteModalComponent {
     if (!focusable.length) return;
 
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last = focusable.at(-1)!;
 
     if (event.shiftKey) {
       if (document.activeElement === first || document.activeElement === container) {
         event.preventDefault();
         last.focus();
       }
-    } else {
-      if (document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+    } else if (document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   }
 }

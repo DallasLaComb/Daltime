@@ -24,10 +24,10 @@
     <div class="mb-4">
       <span
         class="dt-badge"
-        [class.badge-dt-primary]="org.org_admin_count > 0"
-        [class.badge-dt-secondary]="org.org_admin_count === 0"
+        [class.badge-dt-primary]="(org.org_admin_count ?? 0) > 0"
+        [class.badge-dt-secondary]="(org.org_admin_count ?? 0) === 0"
         data-testid="admin-count-badge"
-        >{{ org.org_admin_count }} Admin{{ org.org_admin_count !== 1 ? 's' : '' }}</span
+        >{{ org.org_admin_count ?? 0 }} Admin{{ (org.org_admin_count ?? 0) !== 1 ? 's' : '' }}</span
       >
     </div>
     <div class="flex gap-2 flex-wrap">
@@ -69,10 +69,10 @@
         <td class="px-4 py-3">
           <span
             class="dt-badge"
-            [class.badge-dt-primary]="org.org_admin_count > 0"
-            [class.badge-dt-secondary]="org.org_admin_count === 0"
+            [class.badge-dt-primary]="(org.org_admin_count ?? 0) > 0"
+            [class.badge-dt-secondary]="(org.org_admin_count ?? 0) === 0"
             data-testid="admin-count-badge"
-            >{{ org.org_admin_count }}</span
+            >{{ org.org_admin_count ?? 0 }}</span
           >
         </td>
         <td class="px-4 py-3 text-gray-500">{{ org.created_at | date: 'mediumDate' }}</td>
@@ -164,7 +164,7 @@
                   [value]="formAddress()"
                   (input)="formAddress.set($any($event.target).value)"
                   placeholder="123 Main St, City, State"
-                  autocomplete="street-address"
+                  autocomplete="address-line1"
                 />
               </div>
             </div>

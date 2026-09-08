@@ -8,7 +8,7 @@ import { Footer } from './shared/footer/footer';
   selector: 'app-root',
   imports: [RouterOutlet, Navbar, Footer],
   templateUrl: './app.html',
-  host: { class: 'block px-2 pt-2 md:px-3 md:pt-3' },
+  host: { class: 'flex flex-col min-h-screen px-2 pt-2 md:px-3 md:pt-3' },
 })
 export class App implements OnInit {
   protected readonly authService = inject(AuthService);
