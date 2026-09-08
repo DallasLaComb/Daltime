@@ -93,8 +93,12 @@ jobs:
         run: npm ci
         working-directory: backend
 
+      # Scoped to production dependencies: only these are bundled into the Lambda
+      # artifact, so only these are reachable at runtime. Dev-only build tooling
+      # (esbuild/nanoid/postcss) carries advisories that cannot affect the deployed
+      # function. Keep this a hard gate — prod deps must stay clean.
       - name: npm audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
         working-directory: backend
 
       - name: Run tests
@@ -157,8 +161,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
+      # Pinned: cfn-lint 1.54.0 regressed on resolving !Ref inside SAM Globals and
+      # reports a false E3724 for `Architectures: [!Ref LambdaArchitecture]`, which
+      # is valid CloudFormation. 1.53.3 is the last clean release. Unpinning is what
+      # let this break CI silently on 2026-08-13 — re-test before raising the pin.
       - name: Install cfn-lint
-        run: pip install cfn-lint
+        run: pip install 'cfn-lint==1.53.3'
 
       - name: Lint CloudFormation templates
         run: cfn-lint infra/template.yaml infra/foundation.yaml
