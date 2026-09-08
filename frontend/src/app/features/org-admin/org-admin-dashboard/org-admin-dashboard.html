@@ -1,0 +1,174 @@
+<div class="w-full px-4 py-4 md:py-6">
+  <h2 class="mb-6 text-2xl font-bold text-gray-900">Org Admin Dashboard</h2>
+
+  @if (loading()) {
+    <div class="text-center py-12">
+      <output class="dt-spinner text-dt-secondary">
+        <span class="sr-only">Loading...</span>
+      </output>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
+      {{ error() }}
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div class="p-6">
+        <h5 class="text-base font-semibold text-gray-900 mb-4">Your Organization</h5>
+        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3">
+          <dt class="font-medium text-gray-700">Name</dt>
+          <dd class="min-w-0 text-gray-900 break-words">{{ org()?.name }}</dd>
+          <dt class="font-medium text-gray-700">Address</dt>
+          <dd class="min-w-0 text-gray-900 break-words">{{ org()?.address || '—' }}</dd>
+          <dt class="font-medium text-gray-700">Org ID</dt>
+          <dd class="min-w-0 overflow-hidden">
+            <code class="block truncate text-sm bg-gray-100 px-1.5 py-0.5 rounded">{{
+              org()?.org_id
+            }}</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Organizational Hierarchy -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200">
+      <div class="p-6">
+        <h5 class="text-base font-semibold text-gray-900 mb-4">Organizational Hierarchy</h5>
+
+        @if (hierarchyLoading()) {
+          <div class="text-center py-8">
+            <output class="dt-spinner text-dt-secondary">
+              <span class="sr-only">Loading...</span>
+            </output>
+          </div>
+        } @else if (hierarchyError()) {
+          <div
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 flex items-center justify-between"
+            role="alert"
+          >
+            <span>{{ hierarchyError() }}</span>
+            <button
+              type="button"
+              class="btn-dt-primary-outline btn-dt-sm ml-4"
+              (click)="loadHierarchy()"
+            >
+              Retry
+            </button>
+          </div>
+        } @else {
+          <!-- Org root node -->
+          <div class="flex items-center gap-3 px-4 py-3 bg-dt-primary text-white rounded-lg">
+            <span
+              class="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold"
+            >
+              {{ org()?.name?.charAt(0) }}
+            </span>
+            <span class="font-semibold">{{ org()?.name }}</span>
+            <span class="ml-auto text-xs font-normal opacity-75">
+              {{ hierarchy().managers.length }} manager(s) · {{ employees().length }} employee(s)
+            </span>
+          </div>
+
+          @if (hierarchy().managers.length === 0 && hierarchy().unassigned.length === 0) {
+            <p class="text-center text-gray-400 text-sm py-8">
+              No managers or employees have been added yet.
+            </p>
+          } @else {
+            <!-- Manager + employee tree -->
+            <div class="mt-3 ml-4 border-l-2 border-gray-200 pl-5 space-y-3">
+              @for (manager of hierarchy().managers; track manager.manager_id) {
+                <div>
+                  <!-- Manager row -->
+                  <div
+                    class="flex items-center gap-3 px-3 py-2.5 bg-sky-50 border border-sky-200 rounded-lg"
+                  >
+                    <span
+                      class="flex-shrink-0 w-7 h-7 rounded-full bg-dt-secondary text-white flex items-center justify-center text-xs font-bold"
+                    >
+                      {{ manager.first_name.charAt(0) }}{{ manager.last_name.charAt(0) }}
+                    </span>
+                    <span class="font-semibold text-gray-800"
+                      >{{ manager.first_name }} {{ manager.last_name }}</span
+                    >
+                    <app-status-badge
+                      [status]="manager.status"
+                      [label]="statusLabel(manager.status)"
+                      [colorMap]="statusColorMap"
+                    />
+                    <span class="ml-auto text-xs text-gray-400 whitespace-nowrap"
+                      >{{ manager.reports.length }} report(s)</span
+                    >
+                  </div>
+
+                  <!-- Employee rows under this manager -->
+                  @if (manager.reports.length > 0) {
+                    <div class="mt-2 ml-4 border-l-2 border-gray-100 pl-4 space-y-2">
+                      @for (emp of manager.reports; track emp.employee_id) {
+                        <div
+                          class="flex items-center gap-3 overflow-hidden px-3 py-2 bg-white border border-gray-100 rounded-md text-sm"
+                        >
+                          <span
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-semibold"
+                          >
+                            {{ emp.first_name.charAt(0) }}{{ emp.last_name.charAt(0) }}
+                          </span>
+                          <span class="min-w-0 truncate text-gray-800"
+                            >{{ emp.first_name }} {{ emp.last_name }}</span
+                          >
+                          <span class="hidden min-w-0 truncate text-gray-400 sm:block">{{
+                            emp.email
+                          }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Unassigned employees -->
+              @if (hierarchy().unassigned.length > 0) {
+                <div>
+                  <div
+                    class="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg"
+                  >
+                    <span
+                      class="flex-shrink-0 w-7 h-7 rounded-full bg-amber-300 text-amber-800 flex items-center justify-center text-xs font-bold"
+                      >?</span
+                    >
+                    <span class="font-semibold text-amber-700">Unassigned</span>
+                    <span class="ml-auto text-xs text-amber-500 whitespace-nowrap"
+                      >{{ hierarchy().unassigned.length }} employee(s)</span
+                    >
+                  </div>
+                  <div class="mt-2 ml-4 border-l-2 border-amber-100 pl-4 space-y-2">
+                    @for (emp of hierarchy().unassigned; track emp.employee_id) {
+                      <div
+                        class="flex items-center gap-3 overflow-hidden px-3 py-2 bg-white border border-gray-100 rounded-md text-sm"
+                      >
+                        <span
+                          class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-semibold"
+                        >
+                          {{ emp.first_name.charAt(0) }}{{ emp.last_name.charAt(0) }}
+                        </span>
+                        <span class="min-w-0 truncate text-gray-800"
+                          >{{ emp.first_name }} {{ emp.last_name }}</span
+                        >
+                        <span class="hidden min-w-0 truncate text-gray-400 sm:block">{{
+                          emp.email
+                        }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

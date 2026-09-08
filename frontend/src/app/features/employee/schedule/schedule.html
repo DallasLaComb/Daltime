@@ -1,0 +1,112 @@
+<div class="w-full px-4 py-4 md:py-6">
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">My Schedule</h2>
+      <p class="text-sm text-gray-500">Your assigned shifts</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+        data-testid="prev-month"
+        aria-label="Previous month"
+        (click)="prevMonth()"
+        (keydown.enter)="prevMonth()"
+        (keydown.space)="prevMonth()"
+      >
+        &#8249;
+      </button>
+      <span class="min-w-[140px] text-center text-sm font-semibold text-gray-800">{{
+        monthLabel()
+      }}</span>
+      <button
+        type="button"
+        class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+        data-testid="next-month"
+        aria-label="Next month"
+        (click)="nextMonth()"
+        (keydown.enter)="nextMonth()"
+        (keydown.space)="nextMonth()"
+      >
+        &#8250;
+      </button>
+      @if (!isCurrentMonth()) {
+        <app-button
+          variant="secondary"
+          size="sm"
+          data-testid="goto-current-month"
+          (clicked)="goToCurrentMonth()"
+        >
+          This Month
+        </app-button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <app-loading-spinner />
+  } @else if (error()) {
+    <app-error-alert [message]="error()!" />
+  } @else if (grouped().length === 0) {
+    <app-empty-state
+      title="No shifts scheduled"
+      description="You have no shifts assigned for {{ monthLabel() }}."
+    />
+  } @else {
+    <div class="flex flex-col gap-6">
+      @for (group of grouped(); track group.date) {
+        <div>
+          <div class="mb-2 flex items-center gap-2">
+            @if (isToday(group.date)) {
+              <span class="rounded-full bg-dt-primary px-2.5 py-0.5 text-xs font-bold text-white"
+                >Today</span
+              >
+            }
+            <h3 class="text-sm font-semibold text-gray-700" data-testid="date-group-label">
+              {{ group.dateLabel }}
+            </h3>
+          </div>
+
+          <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            @for (shift of group.shifts; track shift.shift_id) {
+              <div
+                [class]="
+                  'flex items-center gap-4 border-l-4 px-5 py-4 ' +
+                  (group.shifts.indexOf(shift) > 0 ? 'border-t border-gray-100 ' : '') +
+                  shiftBorderStyles[shift.type]
+                "
+                data-testid="shift-card"
+              >
+                <div class="w-28 shrink-0">
+                  <p class="text-sm font-semibold text-gray-800">
+                    {{ formatTime(shift.start_time) }}
+                  </p>
+                  <p class="text-xs text-gray-400">to {{ formatTime(shift.end_time) }}</p>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-gray-900">
+                    {{ shift.location_name || 'Location TBD' }}
+                  </p>
+                  <p class="mt-0.5 text-sm text-gray-500 capitalize">{{ shift.type }} shift</p>
+                </div>
+                <span
+                  [class]="
+                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                    shiftBadgeStyles[shift.type]
+                  "
+                  data-testid="shift-type-badge"
+                  >{{ shift.type }}</span
+                >
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <p class="mt-6 text-sm text-gray-500">
+      <span class="font-semibold text-gray-700">{{ shifts().length }}</span>
+      {{ shifts().length === 1 ? 'shift' : 'shifts' }} in {{ monthLabel() }}
+    </p>
+  }
+</div>

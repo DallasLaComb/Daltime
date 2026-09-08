@@ -1,0 +1,266 @@
+<nav class="dt-debug sticky top-0 z-50 bg-dt-primary shadow-md">
+  <!-- Impersonation banner — shown directly below the main nav bar -->
+  @if (impersonationService.viewingAs()) {
+    <app-impersonation-banner
+      data-testid="impersonation-banner-wrapper"
+      (exitClicked)="endImpersonation()"
+    />
+  }
+
+  <div class="w-full px-4 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <!-- Brand -->
+      <a
+        class="flex items-center gap-2.5 font-bold text-white no-underline text-lg tracking-tight shrink-0"
+        [routerLink]="dashboardRoute()"
+      >
+        <img src="daltime-logo.png" alt="DalTime" class="h-8 w-auto brightness-0 invert" />
+        DalTime
+      </a>
+
+      <!-- Mobile: bell + hamburger (authenticated) or Sign In -->
+      @if (authService.isAuthenticatedSignal()) {
+        <div class="flex items-center gap-1">
+          <!-- Notification bell is shown at every breakpoint (outside the collapsible mainNav) so it's always reachable, including on mobile where mainNav is collapsed by default. -->
+          @if (effectiveRole()) {
+            <app-notification-bell
+              [role]="effectiveRole()!"
+              data-testid="navbar-notification-bell"
+            />
+          }
+
+          <button
+            class="lg:hidden p-2 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+            type="button"
+            [attr.aria-expanded]="menuOpen()"
+            aria-controls="mainNav"
+            aria-label="Toggle navigation"
+            data-testid="navbar-toggler"
+            (click)="toggleMenu()"
+          >
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+        </div>
+      } @else {
+        <app-button variant="ghost" testId="navbar-sign-in" (clicked)="navigateToLogin()"
+          >Sign In</app-button
+        >
+      }
+
+      <!-- Nav (authenticated) -->
+      @if (authService.isAuthenticatedSignal()) {
+        <div
+          id="mainNav"
+          [class]="
+            menuOpen()
+              ? 'flex flex-col lg:flex-row absolute lg:static top-16 left-0 right-0 bg-dt-primary border-b border-white/10 shadow-lg lg:shadow-none px-4 lg:px-0 pb-4 lg:pb-0 lg:flex lg:flex-1 lg:items-center'
+              : 'hidden lg:flex lg:flex-1 lg:items-center'
+          "
+        >
+          <!-- Role nav links — driven by effectiveRole so web-admin sees impersonated role's nav -->
+          <ul class="flex flex-col lg:flex-row lg:ml-6 lg:mr-auto gap-0.5 lg:gap-1 mt-3 lg:mt-0">
+            @if (effectiveRole() === 'WebAdmin') {
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/web-admin"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  (click)="closeMenu()"
+                  >Dashboard</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/web-admin/organizations"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Organizations</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/web-admin/employees"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  data-testid="navbar-employees"
+                  >Employees</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/web-admin/impersonate"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  data-testid="navbar-impersonate"
+                  >Impersonate</a
+                >
+              </li>
+            }
+
+            @if (effectiveRole() === 'OrgAdmin') {
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  (click)="closeMenu()"
+                  >Dashboard</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin/managers"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Managers</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin/employees"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Employees</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin/locations"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Locations</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin/organization"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Organization</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/org-admin/schedule"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  data-testid="navbar-org-admin-schedule"
+                  >Schedule</a
+                >
+              </li>
+            }
+
+            @if (effectiveRole() === 'Manager') {
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/manager"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  (click)="closeMenu()"
+                  >Schedule</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/manager/employees"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Employees</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/manager/shifts-needed"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Shifts Needed</a
+                >
+              </li>
+            }
+
+            @if (effectiveRole() === 'Employee') {
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/employee"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  (click)="closeMenu()"
+                  >Dashboard</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/employee/availability"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Availability</a
+                >
+              </li>
+              <li>
+                <a
+                  class="block px-3 py-2 rounded-md text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors no-underline"
+                  routerLink="/employee/swap-shifts"
+                  routerLinkActive="!text-white font-semibold bg-white/15"
+                  (click)="closeMenu()"
+                  >Swap Shifts</a
+                >
+              </li>
+            }
+          </ul>
+
+          <!-- User actions -->
+          <ul
+            class="flex flex-col lg:flex-row items-start lg:items-center gap-1 lg:gap-2 mt-3 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-white/10"
+          >
+            @if (effectiveRole()) {
+              <li>
+                <app-button variant="ghost" testId="navbar-profile" (clicked)="navigateToProfile()"
+                  >Profile</app-button
+                >
+              </li>
+            }
+            <li>
+              <app-button variant="ghost" testId="navbar-sign-out" (clicked)="openSignOutModal()"
+                >Sign Out</app-button
+              >
+            </li>
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+</nav>
+
+<app-confirmation-modal
+  [open]="showSignOutModal()"
+  title="Sign Out"
+  confirmLabel="Sign Out"
+  confirmVariant="primary"
+  [saving]="signingOut()"
+  (confirmed)="confirmSignOut()"
+  (cancelled)="closeSignOutModal()"
+>
+  <p class="mb-0 text-gray-700">Are you sure you want to sign out?</p>
+</app-confirmation-modal>

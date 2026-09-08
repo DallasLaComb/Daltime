@@ -1,0 +1,14 @@
+{
+  "name": "daltime",
+  "private": true,
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true
+  },
+  "devDependencies": {
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.0",
+    "lint-staged": "^17.0.4",
+    "prettier": "^3.8.3",
+    "secretlint": "^13.0.0"
+  }
+}

@@ -1,0 +1,93 @@
+import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import type {
+  CreateOrganizationBody,
+  UpdateOrganizationBody,
+} from '../../shared/models/web-admin/organization.model.js';
+import {
+  ok,
+  created,
+  noContent,
+  badRequest,
+  notFound,
+  setRequestOrigin,
+  parseBody,
+} from '../../shared/response.js';
+import { mapHandlerError } from '../../shared/errors.js';
+import { requireWebAdminWithLookup } from '../../shared/auth.js';
+import {
+  listOrganizations,
+  getOrganization,
+  createOrganization,
+  updateOrganization,
+  deleteOrganization,
+} from './service.js';
+
+/** Handle POST /organizations — create a new organization. */
+async function handlePost(rawBody: string | undefined, webAdminId: string) {
+  const parsed = parseBody<CreateOrganizationBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  return created(await createOrganization(parsed.data, webAdminId));
+}
+
+/** Handle PUT /organizations/{orgId} — update an existing organization. */
+async function handlePut(orgId: string, rawBody: string | undefined, webAdminId: string) {
+  const parsed = parseBody<UpdateOrganizationBody>(rawBody);
+  if (!parsed.ok) return parsed.response;
+  const org = await updateOrganization(orgId, parsed.data, webAdminId);
+  return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+}
+
+/** Handle collection-level routes (no orgId in path). */
+async function handleCollectionRoute(
+  method: string,
+  rawBody: string | undefined,
+  rawPath: string,
+  webAdminId: string,
+) {
+  if (method === 'GET') return ok(await listOrganizations());
+  if (method === 'POST') return await handlePost(rawBody, webAdminId);
+  return badRequest(`Unhandled route: ${method} ${rawPath}`);
+}
+
+/** Handle resource-level routes (orgId present in path). */
+async function handleResourceRoute(
+  method: string,
+  orgId: string,
+  rawBody: string | undefined,
+  rawPath: string,
+  webAdminId: string,
+) {
+  if (method === 'GET') {
+    const org = await getOrganization(orgId);
+    return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+  }
+  if (method === 'PUT') return await handlePut(orgId, rawBody, webAdminId);
+  if (method === 'DELETE') {
+    const deleted = await deleteOrganization(orgId, webAdminId);
+    return deleted ? noContent() : notFound(`Organization '${orgId}' not found`);
+  }
+  return badRequest(`Unhandled route: ${method} ${rawPath}`);
+}
+
+export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+  const method = event.requestContext.http.method;
+  const orgId = event.pathParameters?.orgId;
+
+  if (method === 'OPTIONS') return ok('');
+
+  setRequestOrigin(event.headers?.['origin']);
+
+  try {
+    // Fail closed: verify the caller is in the WebAdmin Cognito group AND has
+    // a provisioned, ACTIVE WebAdmin record in DynamoDB before any query or
+    // mutation is allowed. Returns the caller's `web_admin_id` for audit
+    // stamping on every mutating operation.
+    const caller = await requireWebAdminWithLookup(event);
+
+    if (!orgId)
+      return await handleCollectionRoute(method, event.body, event.rawPath, caller.web_admin_id);
+    return await handleResourceRoute(method, orgId, event.body, event.rawPath, caller.web_admin_id);
+  } catch (err) {
+    return mapHandlerError(err, 'web-admin organizations handler');
+  }
+};

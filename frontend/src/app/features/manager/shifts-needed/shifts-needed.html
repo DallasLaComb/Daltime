@@ -1,0 +1,328 @@
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6 gap-4">
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        data-testid="prev-month-btn"
+        [disabled]="!canGoPrev()"
+        (click)="prevMonth()"
+        (keydown.enter)="prevMonth()"
+        (keydown.space)="prevMonth()"
+        tabindex="0"
+        aria-label="Previous month"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1
+        class="text-xl font-bold text-gray-900 min-w-[140px] text-center"
+        data-testid="month-label"
+      >
+        {{ monthLabel() }}
+      </h1>
+      <button
+        type="button"
+        class="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+        data-testid="next-month-btn"
+        (click)="nextMonth()"
+        (keydown.enter)="nextMonth()"
+        (keydown.space)="nextMonth()"
+        tabindex="0"
+        aria-label="Next month"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+    <div class="flex items-center gap-2">
+      <app-button variant="primary" size="sm" testId="add-shift-btn" (clicked)="openAddForm()">
+        + Add Shift
+      </app-button>
+    </div>
+  </div>
+
+  <!-- Add / Edit form -->
+  @if (formOpen()) {
+    <div
+      class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6"
+      data-testid="shift-form"
+    >
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">
+        {{ editingShift() ? 'Edit Shift' : 'New Shift' }}
+      </h2>
+
+      @if (formError()) {
+        <div
+          class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 mb-4"
+          data-testid="form-error"
+        >
+          {{ formError() }}
+        </div>
+      }
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Date -->
+        <div>
+          <label
+            for="form-date"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            >Date</label
+          >
+          <input
+            id="form-date"
+            type="date"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+            [class.border-red-400]="formSubmitted() && !formDate()"
+            data-testid="form-date-input"
+            [value]="formDate()"
+            (input)="formDate.set($any($event.target).value)"
+          />
+          @if (formSubmitted() && !formDate()) {
+            <p class="text-red-600 text-sm mt-1" data-testid="form-date-error">Date is required</p>
+          }
+        </div>
+
+        <!-- Location -->
+        <div>
+          <label
+            for="form-location"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            >Location</label
+          >
+          <select
+            id="form-location"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+            [class.border-red-400]="formSubmitted() && !formLocationId()"
+            data-testid="form-location-select"
+            [value]="formLocationId()"
+            (change)="formLocationId.set($any($event.target).value)"
+          >
+            <option value="" disabled>Select a location</option>
+            @for (loc of locations(); track trackByLocationId($index, loc)) {
+              <option [value]="loc.location_id">{{ loc.name }}</option>
+            }
+          </select>
+          @if (formSubmitted() && !formLocationId()) {
+            <p class="text-red-600 text-sm mt-1" data-testid="form-location-error">
+              Location is required
+            </p>
+          }
+          @if (locations().length === 0) {
+            <p class="text-amber-600 text-sm mt-1">
+              No locations available — contact your organization admin to add locations.
+            </p>
+          }
+        </div>
+
+        <!-- Start Time -->
+        <div>
+          <label
+            for="form-start-time"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            >Start Time</label
+          >
+          <input
+            id="form-start-time"
+            type="time"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+            [class.border-red-400]="formSubmitted() && !formStartTime()"
+            data-testid="form-start-time-input"
+            [value]="formStartTime()"
+            (input)="formStartTime.set($any($event.target).value)"
+          />
+          @if (formSubmitted() && !formStartTime()) {
+            <p class="text-red-600 text-sm mt-1" data-testid="form-start-time-error">
+              Start time is required
+            </p>
+          }
+        </div>
+
+        <!-- End Time -->
+        <div>
+          <label
+            for="form-end-time"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            >End Time</label
+          >
+          <input
+            id="form-end-time"
+            type="time"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+            [class.border-red-400]="formSubmitted() && !formEndTime()"
+            data-testid="form-end-time-input"
+            [value]="formEndTime()"
+            (input)="formEndTime.set($any($event.target).value)"
+          />
+          @if (formSubmitted() && !formEndTime()) {
+            <p class="text-red-600 text-sm mt-1" data-testid="form-end-time-error">
+              End time is required
+            </p>
+          }
+        </div>
+
+        <!-- Employee Count -->
+        <div>
+          <label
+            for="form-employee-count"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            ># of Employees</label
+          >
+          <input
+            id="form-employee-count"
+            type="number"
+            min="1"
+            max="50"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+            [class.border-red-400]="formSubmitted() && formEmployeeCount() < 1"
+            data-testid="form-employee-count-input"
+            [value]="formEmployeeCount()"
+            (input)="formEmployeeCount.set(+$any($event.target).value)"
+          />
+          @if (formSubmitted() && formEmployeeCount() < 1) {
+            <p class="text-red-600 text-sm mt-1" data-testid="form-employee-count-error">
+              At least 1 employee required
+            </p>
+          }
+        </div>
+
+        <!-- Notes -->
+        <div class="sm:col-span-2">
+          <label
+            for="form-notes"
+            class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+            >Notes
+            <span class="text-gray-300 font-normal normal-case tracking-normal"
+              >(optional)</span
+            ></label
+          >
+          <textarea
+            id="form-notes"
+            rows="2"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary resize-none"
+            data-testid="form-notes-input"
+            [value]="formNotes()"
+            (input)="formNotes.set($any($event.target).value)"
+            placeholder="Any additional details for this shift"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-5">
+        <app-button variant="secondary" size="sm" testId="cancel-form-btn" (clicked)="closeForm()"
+          >Cancel</app-button
+        >
+        <app-button
+          variant="primary"
+          size="sm"
+          [loading]="formSaving()"
+          testId="save-shift-btn"
+          (clicked)="saveShift()"
+        >
+          {{ editingShift() ? 'Save Changes' : 'Add Shift' }}
+        </app-button>
+      </div>
+    </div>
+  }
+
+  <!-- Delete error -->
+  @if (deleteError()) {
+    <div
+      class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 mb-4"
+      data-testid="delete-error"
+    >
+      {{ deleteError() }}
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex justify-center py-16">
+      <app-loading-spinner />
+    </div>
+  } @else if (error()) {
+    <app-error-alert [message]="error()!" data-testid="page-error" />
+    <div class="mt-3">
+      <app-button variant="secondary" size="sm" testId="retry-btn" (clicked)="loadAll()"
+        >Retry</app-button
+      >
+    </div>
+  } @else if (shiftGroups().length === 0) {
+    <app-empty-state
+      title="No shifts planned"
+      description="Add a shift to start planning {{ monthLabel() }}."
+      data-testid="empty-state"
+    />
+  } @else {
+    <div class="flex flex-col gap-6">
+      @for (group of shiftGroups(); track trackByDate($index, group)) {
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+            {{ group.dateLabel }}
+          </p>
+          <div class="flex flex-col gap-2">
+            @for (shift of group.shifts; track trackByShiftId($index, shift)) {
+              <div
+                class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4"
+                data-testid="shift-card"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900" data-testid="shift-time">
+                      {{ shift.start_time }} – {{ shift.end_time }}
+                      <span class="text-gray-400 font-normal mx-1">·</span>
+                      <span class="text-gray-700 font-normal">{{
+                        employeeLabel(shift.employee_count)
+                      }}</span>
+                      <span class="text-gray-400 font-normal mx-1">·</span>
+                      <span class="text-gray-700 font-normal">{{ shift.location_name }}</span>
+                    </p>
+                    @if (shift.notes) {
+                      <p class="text-sm text-gray-500 mt-1 italic" data-testid="shift-notes">
+                        "{{ shift.notes }}"
+                      </p>
+                    }
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <app-button
+                      variant="primary-outline"
+                      size="sm"
+                      testId="edit-shift-btn"
+                      (clicked)="openEditForm(shift)"
+                      >Edit</app-button
+                    >
+                    <app-button
+                      variant="danger-outline"
+                      size="sm"
+                      [loading]="deletingShiftId() === shift.shift_id"
+                      testId="delete-shift-btn"
+                      (clicked)="deleteShift(shift)"
+                      >Delete</app-button
+                    >
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

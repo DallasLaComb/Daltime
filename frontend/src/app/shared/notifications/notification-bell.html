@@ -1,0 +1,127 @@
+<div class="dt-debug relative" data-testid="notification-bell-wrapper">
+  <!-- Bell toggle — follows the same aria-expanded/aria-controls pattern as navbar.html's hamburger toggler. -->
+  <button
+    type="button"
+    class="relative p-2 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+    [attr.aria-expanded]="panelOpen()"
+    aria-controls="notificationPanel"
+    [attr.aria-label]="hasUnread() ? unreadCount() + ' unread notifications' : 'Notifications'"
+    data-testid="notification-bell-toggle"
+    (click)="togglePanel()"
+  >
+    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+      />
+    </svg>
+
+    @if (hasUnread()) {
+      <span
+        class="absolute top-1 right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white"
+        data-testid="notification-unread-badge"
+      >
+        {{ unreadCount() > 9 ? '9+' : unreadCount() }}
+      </span>
+    }
+
+    <!-- Accessible text alternative for the badge — never color-only. aria-live so screen readers announce changes to the unread count without requiring focus. -->
+    <span class="sr-only" aria-live="polite" data-testid="notification-unread-live-region">
+      {{ hasUnread() ? unreadCount() + ' unread notifications' : 'No unread notifications' }}
+    </span>
+  </button>
+
+  @if (panelOpen()) {
+    <!-- Backdrop: full-screen, transparent on desktop sizing concerns is fine since it's behind the panel; closes the panel on outside click/Escape, matching the modal pattern elsewhere in this app. -->
+    <div
+      class="fixed inset-0 z-40"
+      tabindex="-1"
+      data-testid="notification-panel-backdrop"
+      (click)="closePanel()"
+      (keydown.escape)="closePanel()"
+    ></div>
+
+    <div
+      id="notificationPanel"
+      role="region"
+      aria-label="Notifications"
+      class="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 rounded-lg bg-white text-gray-900 shadow-xl ring-1 ring-black/5 max-h-[80vh] overflow-y-auto"
+      tabindex="-1"
+      data-testid="notification-panel"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="closePanel()"
+    >
+      <div class="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Notifications</h2>
+        <app-button
+          variant="ghost"
+          size="sm"
+          testId="notification-mark-all-read"
+          [disabled]="!hasUnread()"
+          [loading]="markingAll()"
+          (clicked)="markAllAsRead()"
+        >
+          Mark all as read
+        </app-button>
+      </div>
+
+      <div class="p-2">
+        @if (loading()) {
+          <app-loading-spinner label="Loading notifications..." />
+        } @else if (error()) {
+          <app-error-alert [message]="error()!" [retryable]="true" (retry)="retryLoad()" />
+        } @else if (notifications().length === 0) {
+          <app-empty-state
+            title="No notifications"
+            description="You're all caught up — new notifications will show up here."
+          />
+        } @else {
+          <ul class="flex flex-col gap-1" data-testid="notification-list">
+            @for (
+              notification of notifications();
+              track trackByNotificationId($index, notification)
+            ) {
+              <li>
+                <div
+                  class="flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-gray-50"
+                  [class.bg-blue-50]="!notification.read"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="
+                    (notification.read ? 'Read: ' : 'Unread: ') + notification.message
+                  "
+                  [attr.data-testid]="'notification-item-' + notification.notification_id"
+                  (click)="markOneAsRead(notification)"
+                  (keydown.enter)="markOneAsRead(notification)"
+                  (keydown.space)="markOneAsRead(notification)"
+                >
+                  <span class="mt-0.5 text-lg" aria-hidden="true">{{
+                    getDisplay(notification.type).icon
+                  }}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-900" [class.font-semibold]="!notification.read">
+                      {{ notification.message }}
+                    </p>
+                    <p class="mt-0.5 text-xs text-gray-500">
+                      {{ getDisplay(notification.type).label }} ·
+                      {{ formatTimestamp(notification.created_at) }}
+                    </p>
+                  </div>
+                  @if (!notification.read) {
+                    <span
+                      class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-600"
+                      aria-hidden="true"
+                      data-testid="notification-unread-dot"
+                    ></span>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

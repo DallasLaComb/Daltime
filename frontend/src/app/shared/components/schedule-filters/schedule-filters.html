@@ -1,0 +1,62 @@
+<div class="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+  <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+    <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-employee"
+      >Employee</label
+    >
+    <select
+      id="filter-employee"
+      class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+      [value]="filterEmployee()"
+      (change)="employeeFilterChange.emit($event)"
+    >
+      <option value="">All Employees</option>
+      @for (emp of employees(); track emp.employee_id) {
+        <option [value]="emp.employee_id">{{ emp.first_name }} {{ emp.last_name }}</option>
+      }
+    </select>
+  </div>
+  <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+    <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-location"
+      >Location</label
+    >
+    <select
+      id="filter-location"
+      class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+      [value]="filterLocation()"
+      (change)="locationFilterChange.emit($event)"
+    >
+      <option value="">All Locations</option>
+      @for (loc of locations(); track loc.location_id) {
+        <option [value]="loc.location_id">{{ loc.name }}</option>
+      }
+    </select>
+  </div>
+  <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+    <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-type"
+      >Shift Type</label
+    >
+    <select
+      id="filter-type"
+      class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+      [value]="filterType()"
+      (change)="typeFilterChange.emit($event)"
+    >
+      <option value="">All Types</option>
+      <option value="morning">Morning</option>
+      <option value="afternoon">Afternoon</option>
+      <option value="night">Night</option>
+    </select>
+  </div>
+  @if (hasActiveFilters()) {
+    <button
+      type="button"
+      class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100"
+      data-testid="clear-filters"
+      (click)="clearFiltersRequested.emit()"
+      (keydown.enter)="clearFiltersRequested.emit()"
+      (keydown.space)="clearFiltersRequested.emit()"
+    >
+      Clear filters
+    </button>
+  }
+</div>
