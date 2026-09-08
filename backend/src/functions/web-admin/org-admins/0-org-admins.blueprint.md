@@ -1,52 +1,41 @@
 # Spec: Org Admin Management (Web Admin)
 
 ## Overview
-
 Allows a WebAdmin to register, list, and disable OrgAdmin users scoped to a specific Organization. All routes are nested under `/web-admin/organizations/{orgId}` — there is no global cross-org endpoint. When an OrgAdmin is created, the parent org's `org_admin_count` is incremented atomically. When disabled, it is decremented. On first sign-in, Cognito forces the new user to set their own password (`FORCE_CHANGE_PASSWORD` is the default status from `AdminCreateUser`).
 
 ## Role Scope
-
 **WebAdmin only.** All routes require `CognitoJwtAuthorizer`.
-
-### Auth Pattern (Story #257)
-
-All handlers call `requireWebAdminWithLookup(event)` (async, from `shared/auth.ts`) instead of the old synchronous `requireWebAdmin`. This enforces two layers:
-
-1. Cognito group check — the caller must be in the `WebAdmin` group.
-2. DynamoDB provisioning check — the caller must have an ACTIVE `USER#<sub>/METADATA` record. Missing or DISABLED records return 403.
-
-The resolved `web_admin_id` is threaded into every mutating service call (`createOrgAdmin`, `disableOrgAdmin`, `enableOrgAdmin`) and written as `modified_by_web_admin_id` on both the primary and reverse-lookup DynamoDB items for audit purposes. The read-only `listOrgAdmins` call uses the same auth gate but does not propagate `web_admin_id` to the db layer.
 
 ## API Routes
 
-| Method | Path                                                   | Auth           | Description                        |
-| ------ | ------------------------------------------------------ | -------------- | ---------------------------------- |
-| GET    | `/web-admin/organizations/{orgId}/org-admins`          | Yes — WebAdmin | List OrgAdmins for an org          |
-| POST   | `/web-admin/organizations/{orgId}/org-admins`          | Yes — WebAdmin | Register a new OrgAdmin for an org |
-| DELETE | `/web-admin/organizations/{orgId}/org-admins/{userId}` | Yes — WebAdmin | Disable an OrgAdmin                |
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/web-admin/organizations/{orgId}/org-admins` | Yes — WebAdmin | List OrgAdmins for an org |
+| POST | `/web-admin/organizations/{orgId}/org-admins` | Yes — WebAdmin | Register a new OrgAdmin for an org |
+| DELETE | `/web-admin/organizations/{orgId}/org-admins/{userId}` | Yes — WebAdmin | Disable an OrgAdmin |
 
 ## Request / Response Shapes
 
 ```typescript
 // POST body
 interface CreateOrgAdminBody {
-  email: string; // Cognito username — must be a valid email
-  name: string; // display name, stored as Cognito 'name' attribute
+  email: string;         // Cognito username — must be a valid email
+  name: string;          // display name, stored as Cognito 'name' attribute
   temp_password: string; // WebAdmin-chosen; Cognito enforces pool password policy
 }
 
 // Stored DynamoDB entity (two records — see Key Design)
 interface OrgAdminUser {
   // Primary record
-  PK: string; // ORG#<org_id>
-  SK: string; // USER#<user_sub>
-  GSI1PK: string; // ORG_ADMIN
-  GSI1SK: string; // <created_at ISO>
-  user_id: string; // Cognito sub
+  PK: string;         // ORG#<org_id>
+  SK: string;         // USER#<user_sub>
+  GSI1PK: string;     // ORG_ADMIN
+  GSI1SK: string;     // <created_at ISO>
+  user_id: string;    // Cognito sub
   email: string;
   name: string;
   org_id: string;
-  status: string; // Cognito UserStatus e.g. FORCE_CHANGE_PASSWORD, CONFIRMED, DISABLED
+  status: string;     // Cognito UserStatus e.g. FORCE_CHANGE_PASSWORD, CONFIRMED, DISABLED
   created_at: string; // ISO 8601
 }
 
@@ -83,23 +72,23 @@ interface OrgAdminUserResponse {
 
 ## Cognito Operations
 
-| Step         | Command                      | Notes                                                                                                                                                              |
-| ------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Create user  | `AdminCreateUserCommand`     | `MessageAction: 'SUPPRESS'`, `TemporaryPassword`, `UserAttributes: [{ Name: 'name', Value }, { Name: 'email', Value }, { Name: 'email_verified', Value: 'true' }]` |
-| Add to group | `AdminAddUserToGroupCommand` | Group: `OrgAdmin`                                                                                                                                                  |
-| Disable user | `AdminDisableUserCommand`    | Soft delete only                                                                                                                                                   |
+| Step | Command | Notes |
+|---|---|---|
+| Create user | `AdminCreateUserCommand` | `MessageAction: 'SUPPRESS'`, `TemporaryPassword`, `UserAttributes: [{ Name: 'name', Value }, { Name: 'email', Value }, { Name: 'email_verified', Value: 'true' }]` |
+| Add to group | `AdminAddUserToGroupCommand` | Group: `OrgAdmin` |
+| Disable user | `AdminDisableUserCommand` | Soft delete only |
 
 ## DynamoDB Access Patterns
 
-| Operation                        | PK                | SK                  | Index | Command                  |
-| -------------------------------- | ----------------- | ------------------- | ----- | ------------------------ |
-| List OrgAdmins for org           | `ORG#<org_id>`    | begins_with `USER#` | —     | `QueryCommand`           |
-| Write primary record             | `ORG#<org_id>`    | `USER#<user_sub>`   | —     | `PutCommand`             |
-| Write reverse-lookup             | `USER#<user_sub>` | `METADATA`          | —     | `PutCommand`             |
-| Read reverse-lookup (for delete) | `USER#<user_sub>` | `METADATA`          | —     | `GetCommand`             |
-| Update status on disable         | `ORG#<org_id>`    | `USER#<user_sub>`   | —     | `UpdateCommand`          |
-| Increment org count              | `ORG#<org_id>`    | `METADATA`          | —     | `UpdateCommand` (ADD)    |
-| Decrement org count              | `ORG#<org_id>`    | `METADATA`          | —     | `UpdateCommand` (ADD -1) |
+| Operation | PK | SK | Index | Command |
+|---|---|---|---|---|
+| List OrgAdmins for org | `ORG#<org_id>` | begins\_with `USER#` | — | `QueryCommand` |
+| Write primary record | `ORG#<org_id>` | `USER#<user_sub>` | — | `PutCommand` |
+| Write reverse-lookup | `USER#<user_sub>` | `METADATA` | — | `PutCommand` |
+| Read reverse-lookup (for delete) | `USER#<user_sub>` | `METADATA` | — | `GetCommand` |
+| Update status on disable | `ORG#<org_id>` | `USER#<user_sub>` | — | `UpdateCommand` |
+| Increment org count | `ORG#<org_id>` | `METADATA` | — | `UpdateCommand` (ADD) |
+| Decrement org count | `ORG#<org_id>` | `METADATA` | — | `UpdateCommand` (ADD -1) |
 
 ## Single-Table Key Design
 
@@ -127,23 +116,23 @@ org_id  = <org_id>      ← used to reconstruct ORG#<org_id> PK
 
 ## Test Matrix
 
-| #   | Test                           | Route                                 | Input                         | Expected Status | Assert on Body                                       |
-| --- | ------------------------------ | ------------------------------------- | ----------------------------- | --------------- | ---------------------------------------------------- |
-| 1   | Happy path — list              | `GET /{orgId}/org-admins`             | valid JWT                     | 200             | `OrgAdminUserResponse[]`                             |
-| 2   | Happy path — create            | `POST /{orgId}/org-admins`            | valid body                    | 201             | response with `status: 'FORCE_CHANGE_PASSWORD'`      |
-| 3   | Happy path — disable           | `DELETE /{orgId}/org-admins/{userId}` | known userId                  | 204             | empty body                                           |
-| 4   | Create — missing body          | `POST`                                | no body                       | 400             | `{ error: 'Request body is required' }`              |
-| 5   | Create — invalid JSON          | `POST`                                | malformed JSON                | 400             | `{ error: 'Invalid JSON body' }`                     |
-| 6   | Create — missing email         | `POST`                                | no email field                | 400             | `{ error: 'email is required' }`                     |
-| 7   | Create — invalid email format  | `POST`                                | `email: 'bad'`                | 400             | `{ error: 'email must be a valid email address' }`   |
-| 8   | Create — missing name          | `POST`                                | no name                       | 400             | `{ error: 'name is required' }`                      |
-| 9   | Create — missing temp_password | `POST`                                | no temp_password              | 400             | `{ error: 'temp_password is required' }`             |
-| 10  | Create — org not found         | `POST`                                | unknown orgId                 | 404             | `{ error: "Organization '<id>' not found" }`         |
-| 11  | Create — duplicate email       | `POST`                                | existing email                | 409             | `{ error: 'A user with this email already exists' }` |
-| 12  | Create — weak password         | `POST`                                | password fails Cognito policy | 400             | Cognito error message forwarded                      |
-| 13  | Delete — unknown userId        | `DELETE`                              | unknown userId                | 404             | `{ error: "User '<id>' not found" }`                 |
-| 14  | Delete — missing userId param  | `DELETE`                              | no param                      | 400             | `{ error: 'userId path parameter is required' }`     |
-| 15  | Delete — missing orgId param   | any route                             | no orgId                      | 400             | `{ error: 'orgId path parameter is required' }`      |
-| 16  | Cognito failure on create      | `POST`                                | Cognito throws                | 500             | `{ error: 'An unexpected error occurred' }`          |
-| 17  | DynamoDB failure on list       | `GET`                                 | DynamoDB throws               | 500             | `{ error: 'An unexpected error occurred' }`          |
-| 18  | CORS preflight                 | `OPTIONS`                             | —                             | 200             | empty body                                           |
+| # | Test | Route | Input | Expected Status | Assert on Body |
+|---|---|---|---|---|---|
+| 1 | Happy path — list | `GET /{orgId}/org-admins` | valid JWT | 200 | `OrgAdminUserResponse[]` |
+| 2 | Happy path — create | `POST /{orgId}/org-admins` | valid body | 201 | response with `status: 'FORCE_CHANGE_PASSWORD'` |
+| 3 | Happy path — disable | `DELETE /{orgId}/org-admins/{userId}` | known userId | 204 | empty body |
+| 4 | Create — missing body | `POST` | no body | 400 | `{ error: 'Request body is required' }` |
+| 5 | Create — invalid JSON | `POST` | malformed JSON | 400 | `{ error: 'Invalid JSON body' }` |
+| 6 | Create — missing email | `POST` | no email field | 400 | `{ error: 'email is required' }` |
+| 7 | Create — invalid email format | `POST` | `email: 'bad'` | 400 | `{ error: 'email must be a valid email address' }` |
+| 8 | Create — missing name | `POST` | no name | 400 | `{ error: 'name is required' }` |
+| 9 | Create — missing temp_password | `POST` | no temp_password | 400 | `{ error: 'temp_password is required' }` |
+| 10 | Create — org not found | `POST` | unknown orgId | 404 | `{ error: "Organization '<id>' not found" }` |
+| 11 | Create — duplicate email | `POST` | existing email | 409 | `{ error: 'A user with this email already exists' }` |
+| 12 | Create — weak password | `POST` | password fails Cognito policy | 400 | Cognito error message forwarded |
+| 13 | Delete — unknown userId | `DELETE` | unknown userId | 404 | `{ error: "User '<id>' not found" }` |
+| 14 | Delete — missing userId param | `DELETE` | no param | 400 | `{ error: 'userId path parameter is required' }` |
+| 15 | Delete — missing orgId param | any route | no orgId | 400 | `{ error: 'orgId path parameter is required' }` |
+| 16 | Cognito failure on create | `POST` | Cognito throws | 500 | `{ error: 'An unexpected error occurred' }` |
+| 17 | DynamoDB failure on list | `GET` | DynamoDB throws | 500 | `{ error: 'An unexpected error occurred' }` |
+| 18 | CORS preflight | `OPTIONS` | — | 200 | empty body |

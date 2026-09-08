@@ -10,11 +10,17 @@ import {
   created,
   noContent,
   badRequest,
+  notFound,
+  conflict,
+  forbidden,
+  internalError,
   setRequestOrigin,
-  parseBody,
 } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
 import {
+  ValidationError,
+  ConflictError,
+  NotFoundError,
+  ForbiddenError,
   listManagers,
   createManager,
   updateManager,
@@ -24,49 +30,65 @@ import {
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
-async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<CreateManagerBody>(rawBody);
-  if (!parsed.ok) return parsed.response;
-  return created(await createManager(callerSub, parsed.data, cognitoClient));
-}
-
-async function handlePut(
-  callerSub: string,
-  managerId: string | undefined,
-  rawBody: string | undefined,
-) {
-  if (!managerId) return badRequest('managerId path parameter is required');
-  const parsed = parseBody<UpdateManagerBody>(rawBody);
-  if (!parsed.ok) return parsed.response;
-  return ok(await updateManager(callerSub, managerId, parsed.data, cognitoClient));
-}
-
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const managerId = event.pathParameters?.managerId;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await listManagers(callerSub, cognitoClient));
-    if (method === 'POST') return await handlePost(callerSub, event.body);
-    if (method === 'PUT') return await handlePut(callerSub, managerId, event.body);
+    if (method === 'GET') {
+      return ok(await listManagers(callerSub, cognitoClient));
+    }
+
+    if (method === 'POST') {
+      if (!event.body) return badRequest('Request body is required');
+      let body: CreateManagerBody;
+      try {
+        body = JSON.parse(event.body) as CreateManagerBody;
+      } catch {
+        return badRequest('Invalid JSON body');
+      }
+      return created(await createManager(callerSub, body, cognitoClient));
+    }
+
+    if (method === 'PUT') {
+      if (!managerId) return badRequest('managerId path parameter is required');
+      if (!event.body) return badRequest('Request body is required');
+      let body: UpdateManagerBody;
+      try {
+        body = JSON.parse(event.body) as UpdateManagerBody;
+      } catch {
+        return badRequest('Invalid JSON body');
+      }
+      return ok(await updateManager(callerSub, managerId, body, cognitoClient));
+    }
+
     if (method === 'DELETE') {
       if (!managerId) return badRequest('managerId path parameter is required');
       await disableManager(callerSub, managerId, cognitoClient);
       return noContent();
     }
+
     if (method === 'PATCH') {
       if (!managerId) return badRequest('managerId path parameter is required');
       await enableManager(callerSub, managerId, cognitoClient);
       return noContent();
     }
+
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'org-admin managers handler');
+    if (err instanceof ValidationError) return badRequest((err as Error).message);
+    if (err instanceof ConflictError) return conflict((err as Error).message);
+    if (err instanceof NotFoundError) return notFound((err as Error).message);
+    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
+    console.error('Unhandled error in managers handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

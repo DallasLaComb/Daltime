@@ -1,12 +1,14 @@
 import {
   CognitoIdentityProviderClient,
+  AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
-import { enrichSingleWithCognitoStatus } from '../../shared/cognito.js';
+export class ValidationError extends Error {}
+export class ForbiddenError extends Error {}
+export class NotFoundError extends Error {}
 
 const USER_POOL_ID = process.env['USER_POOL_ID']!;
 
@@ -16,13 +18,26 @@ async function resolveCallerOrg(sub: string): Promise<{ org_id: string; user_id:
   return lookup;
 }
 
-export async function getProfile(callerSub: string, cognitoClient: CognitoIdentityProviderClient) {
+export async function getProfile(
+  callerSub: string,
+  cognitoClient: CognitoIdentityProviderClient,
+) {
   const { org_id, user_id } = await resolveCallerOrg(callerSub);
 
   const record = await db.getOrgAdminRecord(org_id, user_id);
   if (!record) throw new NotFoundError('Profile not found');
 
-  return enrichSingleWithCognitoStatus(stripKeys(record), cognitoClient);
+  let status = record.status;
+  try {
+    const user = await cognitoClient.send(
+      new AdminGetUserCommand({ UserPoolId: USER_POOL_ID, Username: record.email }),
+    );
+    status = user.UserStatus ?? status;
+  } catch {
+    // Non-fatal — return DB status if Cognito call fails
+  }
+
+  return { ...stripKeys(record), status };
 }
 
 export async function updateProfile(

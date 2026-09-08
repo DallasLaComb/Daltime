@@ -167,18 +167,37 @@
                   <p class="input-feedback" data-testid="email-error">Email is required</p>
                 }
               </div>
-              <app-password-input
-                inputId="adminPassword"
-                label="Temporary Password"
-                testId="password-input"
-                placeholder="Temporary password"
-                autocomplete="new-password"
-                [value]="formPassword()"
-                [hasError]="formSubmitted() && !formPassword().trim()"
-                errorMessage="Temporary password is required"
-                errorTestId="password-error"
-                (valueChange)="formPassword.set($event)"
-              />
+              <div>
+                <label for="adminPassword" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Temporary Password</label
+                >
+                <div class="flex">
+                  <input
+                    [type]="showPassword() ? 'text' : 'password'"
+                    class="block flex-1 rounded-l-lg border border-r-0 border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                    [class.input-error]="formSubmitted() && !formPassword().trim()"
+                    id="adminPassword"
+                    data-testid="password-input"
+                    [value]="formPassword()"
+                    (input)="formPassword.set($any($event.target).value)"
+                    placeholder="Temporary password"
+                    autocomplete="new-password"
+                  />
+                  <button
+                    class="btn-dt-secondary rounded-l-none rounded-r-lg border border-dt-secondary px-3 text-sm"
+                    type="button"
+                    data-testid="toggle-password-btn"
+                    (click)="togglePassword()"
+                  >
+                    {{ showPassword() ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                @if (formSubmitted() && !formPassword().trim()) {
+                  <p class="input-feedback" data-testid="password-error">
+                    Temporary password is required
+                  </p>
+                }
+              </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-gray-200">
               <app-button

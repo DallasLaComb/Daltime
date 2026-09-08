@@ -8,14 +8,14 @@ import {
 } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import type { Shift, ShiftType, CreateShiftBody } from '../../../core/models/shift.model';
+import type { EmployeeResponse } from '../../../core/models/employee.model';
+import type { ManagerLocation } from '../../../core/models/manager-location.model';
 import type { ShiftNeeded } from '../../../core/models/manager-shift-needed.model';
 import type {
   DayAvailability,
   DayOfWeek,
   WeeklySchedule,
 } from '../../../core/models/employee-availability.model';
-import { toDateKey, toMonthKey, buildViewLabel } from '../../../core/utils/schedule.utils';
-import { ScheduleBaseComponent } from '../../../core/utils/schedule-base';
 import { ManagerShiftsService } from './shifts.service';
 import { ManagerScheduleService } from './schedule.service';
 import { ManagerEmployeesService } from '../employees/employees.service';
@@ -29,12 +29,35 @@ import {
   LoadingSpinnerComponent,
   ErrorAlertComponent,
   EmptyStateComponent,
-  ScheduleFiltersComponent,
-  ScheduleViewToggleComponent,
-  ScheduleNavComponent,
 } from '@common-daltime';
 
 export type ViewMode = 'day' | 'week' | 'month' | 'availability' | 'fill-shift';
+
+const SHIFT_STYLES: Record<ShiftType, string> = {
+  morning: 'bg-sky-100 text-sky-700 border border-sky-200',
+  afternoon: 'bg-amber-100 text-amber-700 border border-amber-200',
+  night: 'bg-violet-100 text-violet-700 border border-violet-200',
+};
+
+const SHIFT_BORDER_STYLES: Record<ShiftType, string> = {
+  morning: 'border-l-sky-400',
+  afternoon: 'border-l-amber-400',
+  night: 'border-l-violet-400',
+};
+
+const SHIFT_BADGE_STYLES: Record<ShiftType, string> = {
+  morning: 'bg-sky-100 text-sky-700',
+  afternoon: 'bg-amber-100 text-amber-700',
+  night: 'bg-violet-100 text-violet-700',
+};
+
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function toMonthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 export interface UnfilledSlot {
   shiftNeeded: ShiftNeeded;
@@ -112,14 +135,11 @@ function weeklyHoursForEmployee(employeeId: string, targetDate: string, shifts: 
     LoadingSpinnerComponent,
     ErrorAlertComponent,
     EmptyStateComponent,
-    ScheduleFiltersComponent,
-    ScheduleViewToggleComponent,
-    ScheduleNavComponent,
   ],
   templateUrl: './schedule.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
+export class ManagerSchedule implements OnInit {
   private readonly shiftsService = inject(ManagerShiftsService);
   private readonly scheduleService = inject(ManagerScheduleService);
   private readonly employeesService = inject(ManagerEmployeesService);
@@ -127,12 +147,27 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
   private readonly shiftsNeededService = inject(ManagerShiftsNeededService);
   private readonly availabilityService = inject(ManagerEmployeeAvailabilityService);
 
-  protected override readonly viewMode = signal<ViewMode>('month');
+  protected readonly shiftStyles = SHIFT_STYLES;
+  protected readonly shiftBorderStyles = SHIFT_BORDER_STYLES;
+  protected readonly shiftBadgeStyles = SHIFT_BADGE_STYLES;
 
+  protected readonly today = new Date();
+  protected readonly viewMode = signal<ViewMode>('month');
+  protected readonly currentDate = signal<Date>(new Date());
+
+  protected readonly loading = signal(true);
+  protected readonly error = signal<string | null>(null);
+  protected readonly allShifts = signal<Shift[]>([]);
+  protected readonly employees = signal<EmployeeResponse[]>([]);
+  protected readonly locations = signal<ManagerLocation[]>([]);
   protected readonly allShiftsNeeded = signal<ShiftNeeded[]>([]);
   protected readonly availabilityBundles = signal<Map<string, EmployeeAvailabilityBundle>>(
     new Map(),
   );
+
+  protected readonly filterEmployee = signal('');
+  protected readonly filterLocation = signal('');
+  protected readonly filterType = signal('');
 
   // ── Modal state ──────────────────────────────────────────────────────────────
   protected readonly modalOpen = signal(false);
@@ -265,8 +300,73 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     () => this.allShifts().filter((s) => s.status === 'published').length,
   );
 
-  protected readonly viewLabel = computed(() =>
-    buildViewLabel(this.currentDate(), this.viewMode() as 'day' | 'week' | 'month'),
+  protected readonly hasActiveFilters = computed(
+    () => !!this.filterEmployee() || !!this.filterLocation() || !!this.filterType(),
+  );
+
+  protected readonly filteredShifts = computed(() =>
+    this.allShifts().filter((s) => {
+      if (this.filterEmployee() && s.employee_id !== this.filterEmployee()) return false;
+      if (this.filterLocation() && s.location_id !== this.filterLocation()) return false;
+      if (this.filterType() && s.type !== this.filterType()) return false;
+      return true;
+    }),
+  );
+
+  protected readonly shiftsByDate = computed(() => {
+    const map = new Map<string, Shift[]>();
+    for (const shift of this.filteredShifts()) {
+      const existing = map.get(shift.date) ?? [];
+      map.set(shift.date, [...existing, shift]);
+    }
+    return map;
+  });
+
+  protected readonly viewLabel = computed(() => {
+    const d = this.currentDate();
+    const mode = this.viewMode();
+    if (mode === 'month') return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (mode === 'week') {
+      const weekStart = this.getWeekStart(d);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      return `${weekStart.toLocaleString('default', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+    return d.toLocaleString('default', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  });
+
+  protected readonly calendarWeeks = computed(() => {
+    const d = this.currentDate();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [
+      ...Array<null>(firstDow).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ];
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks: (number | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+  });
+
+  protected readonly weekDays = computed(() => {
+    const weekStart = this.getWeekStart(this.currentDate());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  });
+
+  protected readonly currentDayShifts = computed(
+    () => this.shiftsByDate().get(toDateKey(this.currentDate())) ?? [],
   );
 
   ngOnInit(): void {
@@ -307,7 +407,7 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     });
   }
 
-  protected override loadShifts(): void {
+  private loadShifts(): void {
     const month = toMonthKey(this.currentDate());
     forkJoin({
       shifts: this.shiftsService.list(month),
@@ -322,6 +422,32 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
       },
       error: () => this.error.set('Failed to refresh shifts.'),
     });
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────────
+
+  protected prevPeriod(): void {
+    const d = new Date(this.currentDate());
+    const prevMonth = toMonthKey(this.currentDate());
+    if (this.viewMode() === 'month') d.setMonth(d.getMonth() - 1);
+    else if (this.viewMode() === 'week') d.setDate(d.getDate() - 7);
+    else d.setDate(d.getDate() - 1);
+    this.currentDate.set(d);
+    if (this.viewMode() === 'month' && toMonthKey(d) !== prevMonth) this.loadShifts();
+  }
+
+  protected nextPeriod(): void {
+    const d = new Date(this.currentDate());
+    const prevMonth = toMonthKey(this.currentDate());
+    if (this.viewMode() === 'month') d.setMonth(d.getMonth() + 1);
+    else if (this.viewMode() === 'week') d.setDate(d.getDate() + 7);
+    else d.setDate(d.getDate() + 1);
+    this.currentDate.set(d);
+    if (this.viewMode() === 'month' && toMonthKey(d) !== prevMonth) this.loadShifts();
+  }
+
+  protected goToToday(): void {
+    this.currentDate.set(new Date(this.today));
   }
 
   protected setViewMode(mode: ViewMode): void {
@@ -351,16 +477,8 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     this.formLocationId.set(sn.location_id);
     this.formStartTime.set(sn.start_time);
     this.formEndTime.set(sn.end_time);
-    const hour = Number.parseInt(sn.start_time.split(':')[0], 10);
-    let formType: 'morning' | 'afternoon' | 'night';
-    if (hour < 12) {
-      formType = 'morning';
-    } else if (hour < 17) {
-      formType = 'afternoon';
-    } else {
-      formType = 'night';
-    }
-    this.formType.set(formType);
+    const hour = parseInt(sn.start_time.split(':')[0], 10);
+    this.formType.set(hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'night');
     this.fillShiftError.set(null);
     this.fillShiftSuccess.set(null);
     this.fillShiftReturnMode.set(
@@ -510,18 +628,12 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
         this.maxDraftRuns.set(result.maxDrafts);
         const remaining = result.maxDrafts - result.draftCount;
         const runLabel = `Run ${result.draftCount}/${result.maxDrafts}`;
-        let msg: string;
-        if (result.created === 0 && result.unfilled === 0) {
-          msg = `${runLabel}: all slots already filled — no new shifts created.`;
-        } else if (result.unfilled > 0) {
-          const slotPlural = result.unfilled === 1 ? '' : 's';
-          const runPlural = remaining === 1 ? '' : 's';
-          msg = `${runLabel}: ${result.created} shifts assigned, ${result.unfilled} slot${slotPlural} still unfilled. ${remaining} run${runPlural} remaining.`;
-        } else {
-          const shiftPlural = result.created === 1 ? '' : 's';
-          const runPlural = remaining === 1 ? '' : 's';
-          msg = `${runLabel}: ${result.created} shift${shiftPlural} assigned. ${remaining} run${runPlural} remaining.`;
-        }
+        const msg =
+          result.created === 0 && result.unfilled === 0
+            ? `${runLabel}: all slots already filled — no new shifts created.`
+            : result.unfilled > 0
+              ? `${runLabel}: ${result.created} shifts assigned, ${result.unfilled} slot${result.unfilled === 1 ? '' : 's'} still unfilled. ${remaining} run${remaining === 1 ? '' : 's'} remaining.`
+              : `${runLabel}: ${result.created} shift${result.created === 1 ? '' : 's'} assigned. ${remaining} run${remaining === 1 ? '' : 's'} remaining.`;
         this.scheduleActionResult.set(msg);
         this.loadShifts();
       },
@@ -556,6 +668,70 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     });
   }
 
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  private getWeekStart(d: Date): Date {
+    const result = new Date(d);
+    result.setDate(d.getDate() - d.getDay());
+    return result;
+  }
+
+  protected isToday(d: Date): boolean {
+    return toDateKey(d) === toDateKey(this.today);
+  }
+
+  protected isTodayDay(day: number | null): boolean {
+    if (day === null) return false;
+    const d = this.currentDate();
+    return (
+      d.getFullYear() === this.today.getFullYear() &&
+      d.getMonth() === this.today.getMonth() &&
+      day === this.today.getDate()
+    );
+  }
+
+  protected dayAbbrev(d: Date): string {
+    return d.toLocaleString('default', { weekday: 'short' });
+  }
+
+  protected shiftsForDay(day: number | null): Shift[] {
+    if (day === null) return [];
+    const d = this.currentDate();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return this.shiftsByDate().get(key) ?? [];
+  }
+
+  protected shiftsForDate(date: Date): Shift[] {
+    return this.shiftsByDate().get(toDateKey(date)) ?? [];
+  }
+
+  protected employeeName(id: string): string {
+    const emp = this.employees().find((e) => e.employee_id === id);
+    return emp ? `${emp.first_name} ${emp.last_name}` : id;
+  }
+
+  protected shortName(id: string): string {
+    const emp = this.employees().find((e) => e.employee_id === id);
+    if (!emp) return id;
+    return emp.last_name ? `${emp.first_name} ${emp.last_name[0]}.` : emp.first_name;
+  }
+
+  protected locationName(id: string): string {
+    return this.locations().find((l) => l.location_id === id)?.name ?? id;
+  }
+
+  protected shortLocation(id: string): string {
+    const name = this.locationName(id);
+    return name.length > 8 ? name.slice(0, 8) + '…' : name;
+  }
+
+  protected shortTime(time: string): string {
+    const [h, m] = time.split(':').map(Number);
+    const period = h < 12 ? 'a' : 'p';
+    const hour = h % 12 || 12;
+    return m === 0 ? `${hour}${period}` : `${hour}:${String(m).padStart(2, '0')}${period}`;
+  }
+
   protected toDateKey(d: Date): string {
     return toDateKey(d);
   }
@@ -567,6 +743,26 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     dayKey: DayOfWeek,
   ): DayAvailability | null {
     return bundle?.availability?.schedule?.[dayKey] ?? null;
+  }
+
+  // ── Filter event handlers ────────────────────────────────────────────────────
+
+  protected setEmployeeFilter(event: Event): void {
+    this.filterEmployee.set((event.target as HTMLSelectElement).value);
+  }
+
+  protected setLocationFilter(event: Event): void {
+    this.filterLocation.set((event.target as HTMLSelectElement).value);
+  }
+
+  protected setTypeFilter(event: Event): void {
+    this.filterType.set((event.target as HTMLSelectElement).value);
+  }
+
+  protected clearFilters(): void {
+    this.filterEmployee.set('');
+    this.filterLocation.set('');
+    this.filterType.set('');
   }
 
   protected setFormType(event: Event): void {

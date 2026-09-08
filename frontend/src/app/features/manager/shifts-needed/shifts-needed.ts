@@ -10,12 +10,6 @@ import {
 } from '@common-daltime';
 import { ManagerLocationsService } from './locations.service';
 import { ManagerShiftsNeededService } from './shifts-needed.service';
-import {
-  formatMonthLabel,
-  formatShortDateLabel,
-  addMonths,
-  toMonthKey,
-} from '../../../core/utils/schedule.utils';
 
 interface ShiftGroup {
   dateLabel: string;
@@ -25,12 +19,36 @@ interface ShiftGroup {
 
 function getNextMonth(): string {
   const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return toMonthKey(d);
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function getCurrentMonth(): string {
-  return toMonthKey(new Date());
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-');
+  return new Date(Number(year), Number(m) - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatDateLabel(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function addMonths(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 @Component({
@@ -78,8 +96,8 @@ export class ManagerShiftsNeededComponent {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, items]) => ({
         date,
-        dateLabel: formatShortDateLabel(date),
-        shifts: [...items].sort((a, b) => a.start_time.localeCompare(b.start_time)),
+        dateLabel: formatDateLabel(date),
+        shifts: items.sort((a, b) => a.start_time.localeCompare(b.start_time)),
       }));
   });
 

@@ -5,7 +5,6 @@ import { AuthService } from '../../core/auth/auth';
 import { ImpersonationService } from '../../core/services/impersonation.service';
 import { ImpersonationBannerComponent } from '../components/impersonation-banner/impersonation-banner';
 import { ROLE_DASHBOARD_MAP } from '../../core/auth/user-role.model';
-import { NotificationBellComponent } from '../notifications/notification-bell';
 
 @Component({
   selector: 'app-navbar',
@@ -15,7 +14,6 @@ import { NotificationBellComponent } from '../notifications/notification-bell';
     ButtonComponent,
     ConfirmationModalComponent,
     ImpersonationBannerComponent,
-    NotificationBellComponent,
   ],
   templateUrl: './navbar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

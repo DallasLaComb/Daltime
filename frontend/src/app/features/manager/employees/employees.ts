@@ -1,21 +1,15 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { USER_STATUS_COLOR_MAP, getUserStatusLabel } from '../../../core/utils/user-status';
 import { ManagerEmployeesService } from './employees.service';
-import { EmployeeCrudBaseComponent } from '../../../core/utils/employee-crud-base';
 import type { EmployeeResponse } from '../../../core/models/employee.model';
-import type { Observable } from 'rxjs';
-import type { ColumnDef, RegisterEmployeeData, EditEmployeeData } from '@common-daltime';
+import type { ColumnDef } from '@common-daltime';
 import {
   CrudPageComponent,
   DataTableComponent,
   CardListComponent,
   StatusBadgeComponent,
-  RegisterEmployeeModalComponent,
-  EditEmployeeModalComponent,
-  EmployeeStatusModalsComponent,
-  EmployeeActionsComponent,
-  EmployeeCardHeaderComponent,
+  ConfirmationModalComponent,
+  ButtonComponent,
 } from '@common-daltime';
 
 @Component({
@@ -26,22 +20,47 @@ import {
     DataTableComponent,
     CardListComponent,
     StatusBadgeComponent,
-    RegisterEmployeeModalComponent,
-    EditEmployeeModalComponent,
-    EmployeeStatusModalsComponent,
-    EmployeeActionsComponent,
-    EmployeeCardHeaderComponent,
+    ConfirmationModalComponent,
+    ButtonComponent,
   ],
   templateUrl: './employees.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ManagerEmployeesComponent extends EmployeeCrudBaseComponent<EmployeeResponse> {
+export class ManagerEmployeesComponent {
   private readonly employeesService = inject(ManagerEmployeesService);
 
   readonly employees = signal<EmployeeResponse[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
 
-  // Edit modal entity
+  // Register modal
+  readonly showRegisterModal = signal(false);
+  readonly saving = signal(false);
+  readonly modalError = signal<string | null>(null);
+  readonly formFirstName = signal('');
+  readonly formLastName = signal('');
+  readonly formEmail = signal('');
+  readonly formPhone = signal('');
+  readonly formPassword = signal('');
+  readonly showPassword = signal(false);
+  readonly formSubmitted = signal(false);
+
+  // Edit modal
+  readonly showEditModal = signal(false);
   readonly editingEmployee = signal<EmployeeResponse | null>(null);
+  readonly editFirstName = signal('');
+  readonly editLastName = signal('');
+  readonly editPhone = signal('');
+  readonly editSubmitted = signal(false);
+  readonly editError = signal<string | null>(null);
+
+  // Disable modal
+  readonly showDisableModal = signal(false);
+  readonly disablingEmployee = signal<EmployeeResponse | null>(null);
+
+  // Enable modal
+  readonly showEnableModal = signal(false);
+  readonly enablingEmployee = signal<EmployeeResponse | null>(null);
 
   readonly columns: ColumnDef[] = [
     { header: 'Name' },
@@ -53,27 +72,18 @@ export class ManagerEmployeesComponent extends EmployeeCrudBaseComponent<Employe
   ];
 
   readonly trackById = (_index: number, employee: EmployeeResponse): string => employee.employee_id;
-  readonly statusColorMap = USER_STATUS_COLOR_MAP;
-  readonly statusLabel = getUserStatusLabel;
+
+  readonly statusColorMap: Record<string, string> = {
+    CONFIRMED: 'badge-dt-success',
+    DISABLED: 'badge-dt-secondary',
+    FORCE_CHANGE_PASSWORD: 'badge-dt-warning',
+  };
 
   constructor() {
-    super();
     this.load();
   }
 
-  protected override extractId(employee: EmployeeResponse): string {
-    return employee.employee_id;
-  }
-
-  protected override disableEntity(id: string): Observable<void> {
-    return this.employeesService.disable(id);
-  }
-
-  protected override enableEntity(id: string): Observable<void> {
-    return this.employeesService.enable(id);
-  }
-
-  protected override load(): void {
+  load(): void {
     this.loading.set(true);
     this.error.set(null);
     this.employeesService.getAll().subscribe({
@@ -88,18 +98,54 @@ export class ManagerEmployeesComponent extends EmployeeCrudBaseComponent<Employe
     });
   }
 
+  statusLabel(status: string): string {
+    if (status === 'CONFIRMED') return 'Active';
+    if (status === 'DISABLED') return 'Disabled';
+    return 'Pending';
+  }
+
   // ─── Register ────────────────────────────────────────────────────────
 
-  handleRegister(data: RegisterEmployeeData): void {
+  openRegisterModal(): void {
+    this.formFirstName.set('');
+    this.formLastName.set('');
+    this.formEmail.set('');
+    this.formPhone.set('');
+    this.formPassword.set('');
+    this.showPassword.set(false);
+    this.formSubmitted.set(false);
+    this.modalError.set(null);
+    this.showRegisterModal.set(true);
+  }
+
+  closeRegisterModal(): void {
+    this.showRegisterModal.set(false);
+  }
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
+  register(): void {
+    this.formSubmitted.set(true);
+    if (
+      !this.formFirstName().trim() ||
+      !this.formLastName().trim() ||
+      !this.formEmail().trim() ||
+      !this.formPassword().trim()
+    )
+      return;
+
     this.saving.set(true);
     this.modalError.set(null);
+
     this.employeesService
       .create({
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        phone: data.phone || undefined,
-        temp_password: data.temp_password,
+        first_name: this.formFirstName(),
+        last_name: this.formLastName(),
+        email: this.formEmail(),
+        phone: this.formPhone() || undefined,
+        temp_password: this.formPassword(),
       })
       .subscribe({
         next: () => {
@@ -122,24 +168,32 @@ export class ManagerEmployeesComponent extends EmployeeCrudBaseComponent<Employe
 
   openEditModal(employee: EmployeeResponse): void {
     this.editingEmployee.set(employee);
+    this.editFirstName.set(employee.first_name);
+    this.editLastName.set(employee.last_name);
+    this.editPhone.set(employee.phone);
+    this.editSubmitted.set(false);
     this.editError.set(null);
     this.showEditModal.set(true);
   }
 
-  override closeEditModal(): void {
+  closeEditModal(): void {
     this.showEditModal.set(false);
     this.editingEmployee.set(null);
   }
 
-  handleSaveEdit(data: EditEmployeeData): void {
+  saveEdit(): void {
+    this.editSubmitted.set(true);
+    if (!this.editFirstName().trim() || !this.editLastName().trim()) return;
+
     this.saving.set(true);
     this.editError.set(null);
+
     const employee = this.editingEmployee()!;
     this.employeesService
       .update(employee.employee_id, {
-        first_name: data.first_name,
-        last_name: data.last_name,
-        phone: data.phone,
+        first_name: this.editFirstName(),
+        last_name: this.editLastName(),
+        phone: this.editPhone(),
       })
       .subscribe({
         next: () => {
@@ -152,5 +206,63 @@ export class ManagerEmployeesComponent extends EmployeeCrudBaseComponent<Employe
           this.editError.set(err?.error?.error ?? 'Failed to update employee');
         },
       });
+  }
+
+  // ─── Disable ─────────────────────────────────────────────────────────
+
+  openDisableModal(employee: EmployeeResponse): void {
+    this.disablingEmployee.set(employee);
+    this.showDisableModal.set(true);
+  }
+
+  closeDisableModal(): void {
+    this.showDisableModal.set(false);
+    this.disablingEmployee.set(null);
+  }
+
+  confirmDisable(): void {
+    const employee = this.disablingEmployee();
+    if (!employee) return;
+
+    this.saving.set(true);
+    this.employeesService.disable(employee.employee_id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.closeDisableModal();
+        this.load();
+      },
+      error: () => {
+        this.saving.set(false);
+      },
+    });
+  }
+
+  // ─── Enable ──────────────────────────────────────────────────────────
+
+  openEnableModal(employee: EmployeeResponse): void {
+    this.enablingEmployee.set(employee);
+    this.showEnableModal.set(true);
+  }
+
+  closeEnableModal(): void {
+    this.showEnableModal.set(false);
+    this.enablingEmployee.set(null);
+  }
+
+  confirmEnable(): void {
+    const employee = this.enablingEmployee();
+    if (!employee) return;
+
+    this.saving.set(true);
+    this.employeesService.enable(employee.employee_id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.closeEnableModal();
+        this.load();
+      },
+      error: () => {
+        this.saving.set(false);
+      },
+    });
   }
 }

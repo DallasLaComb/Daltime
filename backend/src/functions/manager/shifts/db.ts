@@ -5,24 +5,28 @@ import {
   QueryCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import {
-  docClient,
-  GSI1_INDEX,
-  TABLE_NAME,
-  getMetadataRecord,
-  getOrgEntityRecord,
-} from '../../shared/dynamo.js';
+import { docClient, GSI1_INDEX, TABLE_NAME } from '../../shared/dynamo.js';
 import type { Shift } from '../../shared/models/manager/shift.model.js';
 import type { Employee } from '../../shared/models/org-admin/employee.model.js';
 
 export async function getCallerLookup(
   userId: string,
 ): Promise<{ org_id: string; manager_id: string } | null> {
-  return getMetadataRecord(userId);
+  const result = await docClient.send(
+    new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'METADATA' } }),
+  );
+  if (!result.Item) return null;
+  return result.Item as { org_id: string; manager_id: string };
 }
 
 export async function getEmployee(orgId: string, employeeId: string): Promise<Employee | null> {
-  return getOrgEntityRecord<Employee>(orgId, 'EMPLOYEE', employeeId);
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `ORG#${orgId}`, SK: `EMPLOYEE#${employeeId}` },
+    }),
+  );
+  return (result.Item as Employee) ?? null;
 }
 
 export async function listShiftsByManager(managerId: string, month: string): Promise<Shift[]> {

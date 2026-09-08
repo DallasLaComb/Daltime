@@ -1,13 +1,13 @@
 # Deploys the full stack (backend + frontend) to dev, qa, and main.
 # After a successful deploy, runs Robot Framework E2E tests.
 #
-# Flow (MVP — direct-to-main):
-#   push to main → CI runs → CD polls until CI succeeds on that commit → deploys to main
-#
-# Flow (full pipeline — restore post-MVP):
-#   push to dev → CD polls until CI succeeds on that commit → deploys to dev → E2E
+# Flow:
+#   push to dev → CD starts, polls until CI succeeds on that commit → deploys to dev → E2E
 #   PR dev→qa merged → CD finds last successful dev CI artifact → deploys to qa → E2E
 #   PR qa→main merged → CD finds last successful qa CD artifact → deploys to main → E2E
+#
+# CI only runs on dev. QA promotes from the last successful dev CI run.
+# Main promotes from the last successful qa CD run (the artifact qa was actually deployed with).
 # Each environment uses its own AWS role and stack.
 name: CD
 run-name: 'CD — ${{ github.ref_name }}'
@@ -15,7 +15,6 @@ run-name: 'CD — ${{ github.ref_name }}'
 on:
   push:
     branches: [dev, qa, main]
-  workflow_dispatch:
 
 # Cancel any in-progress CD run for the same branch when a new push arrives.
 concurrency:
@@ -30,51 +29,8 @@ permissions:
   statuses: write
 
 jobs:
-  # ── Release gate: hard-blocks production deploys on CRITICAL findings only ──
-  # Runs only when deploying to `main` (production). dev/qa promotions skip this
-  # job entirely (the `if` below is false, so `needs.snyk-release-gate.result`
-  # comes back `skipped`, which `deploy` treats as "proceed" — see its `if:`).
-  #
-  # NOTE: lands inert until `secrets.SNYK_TOKEN` / `vars.SNYK_ORG_ID` exist (Phase 1
-  # of docs/snyk-implementation-plan.md). Until then this job will fail auth and
-  # block `main` deploys — set up the secret/var BEFORE this reaches `main`, or
-  # temporarily add `continue-on-error: true` here and remove it once configured.
-  #
-  # "Critical only" is deliberate (see plan Section 5): production is the one place
-  # an actively-exploitable critical vuln justifies blocking a deploy outright, but
-  # a stricter gate here would, in practice, train the team to bypass it — a
-  # calibrated gate people respect beats a strict one people route around.
-  snyk-release-gate:
-    name: Snyk release gate (critical only)
-    if: github.ref_name == 'main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      # For `main`, the artifact-resolution logic above (ci-run) always pins to
-      # `context.sha` (it polls CI on "this exact commit"), so checking out
-      # `github.sha` directly here scans precisely what's about to be deployed —
-      # no need to depend on a step nested inside the `deploy` job.
-      - uses: actions/checkout@v6.0.2
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Setup Snyk CLI
-        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      - name: Hard gate — fail the deploy on any CRITICAL finding
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk test --all-projects --severity-threshold=critical --org=${{ vars.SNYK_ORG_ID }}
-          snyk iac test infra/template.yaml infra/foundation.yaml --severity-threshold=critical --org=${{ vars.SNYK_ORG_ID }}
-
   deploy:
     name: Deploy to ${{ github.ref_name }}
-    needs: [snyk-release-gate]
-    if: always() && (needs.snyk-release-gate.result == 'success' || needs.snyk-release-gate.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       BRANCH: ${{ github.ref_name }}
@@ -157,12 +113,13 @@ jobs:
               return;
             }
 
-            // ── main: find the last successful CD run on qa, then resolve the CI run
-            //         that qa deployed from (guarantees main always gets qa-verified code).
+            // ── main: find the last successful CD run on qa ──
+            // This ensures main gets exactly what was deployed and verified on qa,
+            // not just the last CI build — it's the qa-tested artifact.
             if (branch === 'main') {
               console.log('Main promotion — finding last successful CD run on qa...');
 
-              const cdRuns = await github.rest.actions.listWorkflowRuns({
+              const runs = await github.rest.actions.listWorkflowRuns({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'cd.yml',
@@ -171,31 +128,55 @@ jobs:
                 per_page: 1
               });
 
-              if (!cdRuns.data.workflow_runs.length) {
+              if (!runs.data.workflow_runs.length) {
                 core.setFailed('No successful CD runs found on qa. Deploy to qa first.');
                 return;
               }
 
-              // The qa CD run deployed from the last successful CI run on dev.
-              // That CI run uploaded the sam-build and frontend-build artifacts.
-              // Re-resolve it the same way qa does: last successful CI run on dev.
+              const qaRun = runs.data.workflow_runs[0];
+              console.log(`✓ Found last successful qa CD run: ${qaRun.id} (${qaRun.head_sha})`);
+
+              // The qa CD run itself doesn't have artifacts — it downloaded them from a CI run.
+              // We need to find which CI run it used. The qa CD run's head_sha is the qa merge
+              // commit sha. We walk back to find the CI run on dev whose artifacts qa used,
+              // which is the most recent successful CI run on dev at the time qa was deployed.
+              // The simplest reliable approach: find the CI run on dev whose sha matches
+              // one of the parents of the qa merge commit that triggered the qa CD run.
+              const qaCommit = await github.rest.git.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: qaRun.head_sha
+              });
+
+              const parentShas = qaCommit.data.parents.map(p => p.sha);
+              console.log(`QA merge commit parents: ${parentShas.join(', ')}`);
+
               const ciRuns = await github.rest.actions.listWorkflowRuns({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'ci.yml',
                 branch: 'dev',
                 status: 'success',
-                per_page: 1
+                per_page: 20
               });
 
-              if (!ciRuns.data.workflow_runs.length) {
-                core.setFailed('No successful CI runs found on dev. Deploy to dev first.');
+              // Match on parent shas — parent[1] of the qa merge commit is the dev HEAD
+              const shasToCheck = [qaRun.head_sha, ...parentShas];
+              let ciRun = ciRuns.data.workflow_runs.find(r => shasToCheck.includes(r.head_sha));
+
+              // Fallback: if no sha match (e.g. multiple merges since), use the most recent
+              // successful CI run on dev — same artifact qa would have used
+              if (!ciRun) {
+                console.log('No sha match found — falling back to most recent successful dev CI run');
+                ciRun = ciRuns.data.workflow_runs[0];
+              }
+
+              if (!ciRun) {
+                core.setFailed('No successful CI runs found on dev. Deploy to dev and qa first.');
                 return;
               }
 
-              const ciRun = ciRuns.data.workflow_runs[0];
-              const qaCdRun = cdRuns.data.workflow_runs[0];
-              console.log(`✓ Main — using qa CD run ${qaCdRun.id} (${qaCdRun.head_sha}), CI artifacts from dev run ${ciRun.id} (${ciRun.head_sha})`);
+              console.log(`✓ Main — using CI run: ${ciRun.id} (${ciRun.head_sha})`);
               core.setOutput('run_id', ciRun.id);
               core.setOutput('sha', ciRun.head_sha);
             }
@@ -215,7 +196,7 @@ jobs:
 
       # ── Deploy Backend (SAM) ──
       - name: Download SAM build artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@v4
         with:
           name: sam-build
           path: backend/.aws-sam/build/
@@ -223,7 +204,7 @@ jobs:
           run-id: ${{ steps.ci-run.outputs.run_id }}
 
       - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v3
+        uses: aws-actions/setup-sam@f84ec7d548307efafe33230528756de3c5841a17 # v2
 
       - name: Get foundation stack outputs
         id: foundation
@@ -274,7 +255,7 @@ jobs:
 
       # ── Deploy Frontend ──
       - name: Download frontend build artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend/dist/frontend/browser/

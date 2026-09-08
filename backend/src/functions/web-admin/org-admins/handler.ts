@@ -6,54 +6,70 @@ import {
   created,
   noContent,
   badRequest,
+  notFound,
+  conflict,
+  internalError,
   setRequestOrigin,
-  parseBody,
 } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { requireWebAdminWithLookup } from '../../shared/auth.js';
-import { listOrgAdmins, createOrgAdmin, disableOrgAdmin, enableOrgAdmin } from './service.js';
+import {
+  ValidationError,
+  ConflictError,
+  NotFoundError,
+  listOrgAdmins,
+  createOrgAdmin,
+  disableOrgAdmin,
+  enableOrgAdmin,
+} from './service.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
-
-/** Handle POST /organizations/{orgId}/org-admins — create a new OrgAdmin. */
-async function handlePost(orgId: string, rawBody: string | undefined, webAdminId: string) {
-  const parsed = parseBody<CreateOrgAdminBody>(rawBody);
-  if (!parsed.ok) return parsed.response;
-  return created(await createOrgAdmin(orgId, parsed.data, cognitoClient, webAdminId));
-}
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const orgId = event.pathParameters?.orgId;
   const userId = event.pathParameters?.userId;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
   if (!orgId) return badRequest('orgId path parameter is required');
 
   try {
-    // Fail closed: verify the caller is in the WebAdmin Cognito group AND has
-    // a provisioned, ACTIVE WebAdmin record in DynamoDB before any query or
-    // mutation is allowed. Returns the caller's `web_admin_id` for audit
-    // stamping on every mutating operation.
-    const caller = await requireWebAdminWithLookup(event);
+    if (method === 'GET') {
+      return ok(await listOrgAdmins(orgId, cognitoClient));
+    }
 
-    if (method === 'GET') return ok(await listOrgAdmins(orgId, cognitoClient));
-    if (method === 'POST') return await handlePost(orgId, event.body, caller.web_admin_id);
+    if (method === 'POST') {
+      if (!event.body) return badRequest('Request body is required');
+      let body: CreateOrgAdminBody;
+      try {
+        body = JSON.parse(event.body) as CreateOrgAdminBody;
+      } catch {
+        return badRequest('Invalid JSON body');
+      }
+      return created(await createOrgAdmin(orgId, body, cognitoClient));
+    }
+
     if (method === 'DELETE') {
       if (!userId) return badRequest('userId path parameter is required');
-      await disableOrgAdmin(orgId, userId, cognitoClient, caller.web_admin_id);
+      await disableOrgAdmin(orgId, userId, cognitoClient);
       return noContent();
     }
+
     if (method === 'PATCH') {
       if (!userId) return badRequest('userId path parameter is required');
-      await enableOrgAdmin(orgId, userId, cognitoClient, caller.web_admin_id);
+      await enableOrgAdmin(orgId, userId, cognitoClient);
       return noContent();
     }
+
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'web-admin org-admins handler');
+    if (err instanceof ValidationError) return badRequest((err as Error).message);
+    if (err instanceof ConflictError) return conflict((err as Error).message);
+    if (err instanceof NotFoundError) return notFound((err as Error).message);
+    console.error('Unhandled error in org-admins handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

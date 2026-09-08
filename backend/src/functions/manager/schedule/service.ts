@@ -14,7 +14,8 @@ import * as db from './db.js';
 
 const MAX_DRAFTS = 10;
 
-import { ValidationError, ForbiddenError } from '../../shared/errors.js';
+export class ValidationError extends Error {}
+export class ForbiddenError extends Error {}
 
 const DAY_NAMES: DayOfWeek[] = [
   'sunday',
@@ -38,7 +39,7 @@ function currentMonthString(): string {
 }
 
 function inferType(startTime: string): ShiftType {
-  const hour = Number.parseInt(startTime.split(':')[0], 10);
+  const hour = parseInt(startTime.split(':')[0], 10);
   if (hour < 12) return 'morning';
   if (hour < 17) return 'afternoon';
   return 'night';
@@ -192,7 +193,7 @@ export async function generateDraftSchedule(
   // Sort shifts by date then start_time
   const sortedShifts = [...shiftsNeeded].sort((a, b) => {
     const dc = a.date.localeCompare(b.date);
-    return dc === 0 ? a.start_time.localeCompare(b.start_time) : dc;
+    return dc !== 0 ? dc : a.start_time.localeCompare(b.start_time);
   });
 
   // Track per-day assignment counts this run (in addition to existing shifts)

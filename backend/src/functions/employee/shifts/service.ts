@@ -1,7 +1,7 @@
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-import { ForbiddenError } from '../../shared/errors.js';
+export class ForbiddenError extends Error {}
 
 async function resolveCallerEmployee(
   sub: string,
@@ -28,6 +28,6 @@ export async function listMyShifts(callerSub: string, rawMonth: string | undefin
     .map((s) => stripKeys(s))
     .sort((a, b) => {
       const dc = a.date.localeCompare(b.date);
-      return dc === 0 ? a.start_time.localeCompare(b.start_time) : dc;
+      return dc !== 0 ? dc : a.start_time.localeCompare(b.start_time);
     });
 }

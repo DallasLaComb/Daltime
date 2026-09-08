@@ -1,135 +1,277 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import { ok, badRequest, notFound, setRequestOrigin } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { requireWebAdminWithLookup } from '../../shared/auth.js';
-import { listImpersonatableUsers, getUserContext } from './service.js';
-import { resolveProxyRoute } from './route-registry.js';
-import { synthesizeImpersonatedEvent } from './synthesize-event.js';
-import { getUserReverseLookup } from './db.js';
+import {
+  ok,
+  created,
+  noContent,
+  badRequest,
+  notFound,
+  internalError,
+  setRequestOrigin,
+} from '../../shared/response.js';
+import {
+  ValidationError,
+  NotFoundError,
+  listImpersonatableUsers,
+  getUserContext,
+  getManagerShiftsNeeded,
+  getOrgManagers,
+  getOrgEmployees,
+  getOrgLocations,
+  getOrgMetadata,
+  getManagerLocationAssignments,
+  assignManagerLocation,
+  removeManagerLocation,
+  getEmployeeLocationAssignments,
+  assignEmployeeLocation,
+  removeEmployeeLocation,
+  getEmployeeProfileProxy,
+  getEmployeeAvailabilityProxy,
+  upsertEmployeeAvailabilityProxy,
+  getEmployeeAvailabilityOverridesProxy,
+  upsertEmployeeAvailabilityOverridesProxy,
+  getOrgAdminShiftsProxy,
+  getManagerShiftsProxy,
+  createManagerShiftProxy,
+  updateManagerShiftProxy,
+  removeManagerShiftProxy,
+  getEmployeeShiftsProxy,
+  generateDraftScheduleProxy,
+  publishScheduleProxy,
+  getDraftSummaryProxy,
+} from './service.js';
+import type {
+  UpsertAvailabilityBody,
+  UpsertOverridesBody,
+} from '../../shared/models/employee/availability.model.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
-
-/** Handles GET /web-admin/impersonate/users?orgId=&role= — lists impersonatable users. */
-async function handleListUsers(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
-  const orgId = event.queryStringParameters?.['orgId'];
-  const role = event.queryStringParameters?.['role'];
-  if (!orgId) return badRequest('orgId query parameter is required');
-  if (!role) return badRequest('role query parameter is required');
-  return ok(await listImpersonatableUsers(orgId, role));
-}
-
-/** Handles GET /web-admin/impersonate/{userId}/context — fetches a user's profile + role. */
-async function handleGetContext(userId: string) {
-  return ok(await getUserContext(userId, cognitoClient));
-}
-
-/**
- * Derive the Cognito group name (role) for the impersonated user from the
- * route sub-path. The `afterUserId` path always starts with the role segment
- * (e.g. `manager/shifts/abc123`). We capitalize the first letter to produce
- * the Cognito group convention (e.g. `Manager`, `Employee`, `OrgAdmin`).
- *
- * This avoids a round-trip to Cognito — the role is already encoded in the
- * path the caller supplied, and it is validated implicitly by resolveProxyRoute
- * (which rejects unrecognised role prefixes with a 400). Providing the
- * correct cognito:groups claim in the synthesized event ensures downstream
- * handlers that call getCallerGroups see the impersonated user's role, not
- * the WebAdmin's.
- */
-function deriveRoleFromPath(afterUserId: string): string {
-  const firstSegment = afterUserId.split('/')[0] ?? '';
-  // Convert kebab-case like "org-admin" to "OrgAdmin", and plain segments
-  // like "manager" to "Manager", matching Cognito group name conventions.
-  return firstSegment
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-}
-
-/**
- * Generic dispatcher: resolves the real role handler + path params for an
- * arbitrary "{role}/..." sub-path and invokes it in-process with the
- * impersonated userId substituted for the caller's own identity.
- *
- * This single function is what replaces the old per-route whitelist
- * (routeOrgAdmin/routeManager/routeEmployee and their *Proxy service
- * functions): any current or future org-admin/manager/employee route is
- * reachable here as soon as it has an entry in route-registry.ts, with zero
- * new code in this handler.
- */
-async function dispatchToRealHandler(
-  event: APIGatewayProxyEventV2WithJWTAuthorizer,
-  userId: string,
-  afterUserId: string,
-) {
-  // Fail closed: the impersonated userId must resolve to a real user before
-  // we forward any request on their behalf — this preserves the existing
-  // authorization boundary (no widening of who can be impersonated).
-  const targetUser = await getUserReverseLookup(userId);
-  if (!targetUser) return notFound('Impersonated user not found');
-
-  const resolved = resolveProxyRoute(afterUserId);
-  if (!resolved) {
-    return badRequest(`Unhandled proxy route: ${event.requestContext.http.method} ${afterUserId}`);
-  }
-
-  const { route, pathParams } = resolved;
-  const realHandler = await route.loadHandler();
-  // Derive the impersonated user's Cognito group from the route path prefix
-  // (e.g. "manager/shifts" → "Manager") so the synthesized event carries the
-  // correct cognito:groups claim, not the WebAdmin's group.
-  const impersonatedUserRole = deriveRoleFromPath(afterUserId);
-  const syntheticEvent = synthesizeImpersonatedEvent(
-    event,
-    userId,
-    afterUserId,
-    pathParams,
-    impersonatedUserRole,
-  );
-  return realHandler(syntheticEvent);
-}
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const rawPath = event.rawPath;
 
-  if (method === 'OPTIONS') return ok('');
+  if (method === 'OPTIONS') {
+    return ok('');
+  }
 
   setRequestOrigin(event.headers?.['origin']);
 
   try {
-    // Fail closed: only a provisioned, ACTIVE WebAdmin may request
-    // impersonation. This check runs against the *caller's own* JWT claims
-    // AND a DynamoDB record lookup — a Cognito group membership alone is no
-    // longer sufficient. The synthesized events passed to real role handlers
-    // below carry the *impersonated* user's sub, not the web admin's sub or
-    // web_admin_id, so the downstream handlers cannot see the web admin's
-    // identity at all. The caller's web_admin_id is available here for
-    // audit logging if needed in the future.
-    // Throws ForbiddenError (→ 403) if the caller is not in the WebAdmin
-    // Cognito group, has no provisioned DynamoDB record, or is DISABLED.
-    // The returned caller includes web_admin_id for future audit logging;
-    // it is NOT threaded into synthesized sub-handler events because those
-    // events represent the impersonated user's identity, not the WebAdmin's.
-    await requireWebAdminWithLookup(event);
-
+    // ── GET /web-admin/impersonate/users?orgId=&role= ──────────────────────
     if (method === 'GET' && rawPath.endsWith('/impersonate/users')) {
-      return await handleListUsers(event);
+      const orgId = event.queryStringParameters?.['orgId'];
+      const role = event.queryStringParameters?.['role'];
+      if (!orgId) return badRequest('orgId query parameter is required');
+      if (!role) return badRequest('role query parameter is required');
+      return ok(await listImpersonatableUsers(orgId, role));
     }
+
+    // ── GET /web-admin/impersonate/{userId}/context ────────────────────────
     if (method === 'GET' && rawPath.endsWith('/context')) {
       const userId = event.pathParameters?.['userId'];
       if (!userId) return badRequest('userId path parameter is required');
-      return await handleGetContext(userId);
+      return ok(await getUserContext(userId, cognitoClient));
     }
 
+    // ── Proxy routes — all need a valid userId ─────────────────────────────
     const userId = event.pathParameters?.['userId'];
     if (!userId) return badRequest('userId path parameter is required');
 
+    // Derive the sub-path after /web-admin/impersonate/{userId}/
+    // rawPath example: /web-admin/impersonate/abc-123/org-admin/managers
     const afterUserId = rawPath.split(`/impersonate/${userId}/`)[1] ?? '';
 
-    return await dispatchToRealHandler(event, userId, afterUserId);
+    // org-admin proxies
+    if (method === 'GET' && afterUserId === 'org-admin/managers') {
+      return ok(await getOrgManagers(userId));
+    }
+    if (method === 'GET' && afterUserId === 'org-admin/employees') {
+      return ok(await getOrgEmployees(userId));
+    }
+    if (method === 'GET' && afterUserId === 'org-admin/locations') {
+      return ok(await getOrgLocations(userId));
+    }
+    if (method === 'GET' && afterUserId === 'org-admin/organization') {
+      return ok(await getOrgMetadata(userId));
+    }
+
+    // manager proxies
+    if (method === 'GET' && afterUserId === 'manager/shifts-needed') {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await getManagerShiftsNeeded(userId, month));
+    }
+    if (method === 'GET' && afterUserId === 'manager/employees') {
+      return ok(await getOrgEmployees(userId));
+    }
+    if (method === 'GET' && afterUserId === 'manager/locations') {
+      return ok(await getOrgLocations(userId));
+    }
+
+    // org-admin/managers/{managerId}/locations — GET + POST
+    const managerLocationsMatch = afterUserId.match(/^org-admin\/managers\/([^/]+)\/locations$/);
+    if (managerLocationsMatch) {
+      const [, managerId] = managerLocationsMatch;
+      if (method === 'GET') return ok(await getManagerLocationAssignments(userId, managerId));
+      if (method === 'POST') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: { location_id?: string };
+        try {
+          body = JSON.parse(event.body) as { location_id?: string };
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        if (!body.location_id?.trim()) return badRequest('location_id is required');
+        return created(await assignManagerLocation(userId, managerId, body.location_id));
+      }
+    }
+
+    // org-admin/managers/{managerId}/locations/{locationId} — DELETE
+    const managerLocationByIdMatch = afterUserId.match(
+      /^org-admin\/managers\/([^/]+)\/locations\/([^/]+)$/,
+    );
+    if (managerLocationByIdMatch && method === 'DELETE') {
+      const [, managerId, locationId] = managerLocationByIdMatch;
+      await removeManagerLocation(userId, managerId, locationId);
+      return noContent();
+    }
+
+    // org-admin/employees/{employeeId}/locations — GET + POST
+    const employeeLocationsMatch = afterUserId.match(/^org-admin\/employees\/([^/]+)\/locations$/);
+    if (employeeLocationsMatch) {
+      const [, employeeId] = employeeLocationsMatch;
+      if (method === 'GET') return ok(await getEmployeeLocationAssignments(userId, employeeId));
+      if (method === 'POST') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: { location_id?: string };
+        try {
+          body = JSON.parse(event.body) as { location_id?: string };
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        if (!body.location_id?.trim()) return badRequest('location_id is required');
+        return created(await assignEmployeeLocation(userId, employeeId, body.location_id));
+      }
+    }
+
+    // org-admin/employees/{employeeId}/locations/{locationId} — DELETE
+    const employeeLocationByIdMatch = afterUserId.match(
+      /^org-admin\/employees\/([^/]+)\/locations\/([^/]+)$/,
+    );
+    if (employeeLocationByIdMatch && method === 'DELETE') {
+      const [, employeeId, locationId] = employeeLocationByIdMatch;
+      await removeEmployeeLocation(userId, employeeId, locationId);
+      return noContent();
+    }
+
+    // employee/profile — GET
+    if (method === 'GET' && afterUserId === 'employee/profile') {
+      return ok(await getEmployeeProfileProxy(userId));
+    }
+
+    // employee/availability — GET + PUT
+    if (afterUserId === 'employee/availability') {
+      if (method === 'GET') return ok(await getEmployeeAvailabilityProxy(userId));
+      if (method === 'PUT') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: UpsertAvailabilityBody;
+        try {
+          body = JSON.parse(event.body) as UpsertAvailabilityBody;
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        return ok(await upsertEmployeeAvailabilityProxy(userId, body));
+      }
+    }
+
+    // employee/availability/overrides — GET + PUT
+    if (afterUserId === 'employee/availability/overrides') {
+      if (method === 'GET') return ok(await getEmployeeAvailabilityOverridesProxy(userId));
+      if (method === 'PUT') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: UpsertOverridesBody;
+        try {
+          body = JSON.parse(event.body) as UpsertOverridesBody;
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        return ok(await upsertEmployeeAvailabilityOverridesProxy(userId, body));
+      }
+    }
+
+    // org-admin/shifts — GET
+    if (method === 'GET' && afterUserId.startsWith('org-admin/shifts')) {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await getOrgAdminShiftsProxy(userId, month));
+    }
+
+    // manager/shifts/{shiftId} — PUT + DELETE
+    const managerShiftByIdMatch = afterUserId.match(/^manager\/shifts\/([^/]+)$/);
+    if (managerShiftByIdMatch) {
+      const [, shiftId] = managerShiftByIdMatch;
+      if (method === 'PUT') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: Parameters<typeof updateManagerShiftProxy>[2];
+        try {
+          body = JSON.parse(event.body) as Parameters<typeof updateManagerShiftProxy>[2];
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        return ok(await updateManagerShiftProxy(userId, shiftId, body));
+      }
+      if (method === 'DELETE') {
+        await removeManagerShiftProxy(userId, shiftId);
+        return noContent();
+      }
+    }
+
+    // manager/shifts — GET + POST
+    if (afterUserId === 'manager/shifts') {
+      if (method === 'GET') {
+        const month = event.queryStringParameters?.['month'];
+        return ok(await getManagerShiftsProxy(userId, month));
+      }
+      if (method === 'POST') {
+        if (!event.body) return badRequest('Request body is required');
+        let body: Parameters<typeof createManagerShiftProxy>[1];
+        try {
+          body = JSON.parse(event.body) as Parameters<typeof createManagerShiftProxy>[1];
+        } catch {
+          return badRequest('Invalid JSON body');
+        }
+        return created(await createManagerShiftProxy(userId, body));
+      }
+    }
+
+    // employee/shifts — GET
+    if (method === 'GET' && afterUserId.startsWith('employee/shifts')) {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await getEmployeeShiftsProxy(userId, month));
+    }
+
+    // manager/schedule/generate — POST
+    if (method === 'POST' && afterUserId === 'manager/schedule/generate') {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await generateDraftScheduleProxy(userId, month));
+    }
+
+    // manager/schedule/publish — POST
+    if (method === 'POST' && afterUserId === 'manager/schedule/publish') {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await publishScheduleProxy(userId, month));
+    }
+
+    // manager/schedule/drafts — GET
+    if (method === 'GET' && afterUserId === 'manager/schedule/drafts') {
+      const month = event.queryStringParameters?.['month'];
+      return ok(await getDraftSummaryProxy(userId, month));
+    }
+
+    return badRequest(`Unhandled proxy route: ${method} ${rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'web-admin impersonate handler');
+    if (err instanceof ValidationError) return badRequest((err as Error).message);
+    if (err instanceof NotFoundError) return notFound((err as Error).message);
+    console.error('Unhandled error in impersonate handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

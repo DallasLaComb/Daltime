@@ -2,6 +2,9 @@ import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
   AdminAddUserToGroupCommand,
+  AdminDisableUserCommand,
+  AdminEnableUserCommand,
+  AdminGetUserCommand,
   UsernameExistsException,
   InvalidPasswordException,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -13,20 +16,13 @@ import type {
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-import {
-  ValidationError,
-  ConflictError,
-  NotFoundError,
-  ForbiddenError,
-} from '../../shared/errors.js';
-import { validateCreateUserBody } from '../../shared/validation.js';
-import {
-  enrichWithCognitoStatus,
-  adminDisableUser,
-  adminEnableUser,
-} from '../../shared/cognito.js';
+export class ValidationError extends Error {}
+export class ConflictError extends Error {}
+export class NotFoundError extends Error {}
+export class ForbiddenError extends Error {}
 
 const USER_POOL_ID = process.env['USER_POOL_ID']!;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
 
 /** Resolve the caller's org_id from their JWT sub. */
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; user_id: string }> {
@@ -43,7 +39,20 @@ export async function listManagers(
   const items = await db.listManagersByOrg(org_id);
   const managers = items.map(stripKeys);
 
-  return enrichWithCognitoStatus(managers, cognitoClient);
+  const withStatus = await Promise.all(
+    managers.map(async (m) => {
+      try {
+        const user = await cognitoClient.send(
+          new AdminGetUserCommand({ UserPoolId: USER_POOL_ID, Username: m.email }),
+        );
+        return { ...m, status: user.UserStatus ?? m.status };
+      } catch {
+        return m;
+      }
+    }),
+  );
+
+  return withStatus;
 }
 
 export async function createManager(
@@ -51,7 +60,12 @@ export async function createManager(
   body: CreateManagerBody,
   cognitoClient: CognitoIdentityProviderClient,
 ) {
-  validateCreateUserBody(body);
+  if (!body.email?.trim()) throw new ValidationError('email is required');
+  if (!EMAIL_REGEX.test(body.email.trim()))
+    throw new ValidationError('email must be a valid email address');
+  if (!body.first_name?.trim()) throw new ValidationError('first_name is required');
+  if (!body.last_name?.trim()) throw new ValidationError('last_name is required');
+  if (!body.temp_password?.trim()) throw new ValidationError('temp_password is required');
 
   const { org_id, user_id: orgAdminId } = await resolveCallerOrg(callerSub);
 
@@ -158,7 +172,13 @@ export async function disableManager(
   if (!lookup) throw new NotFoundError(`Manager '${managerId}' not found`);
   if (lookup.org_id !== org_id) throw new ForbiddenError('Not authorized to manage this manager');
 
-  await adminDisableUser(cognitoClient, lookup.email);
+  await cognitoClient.send(
+    new AdminDisableUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: lookup.email,
+    }),
+  );
+
   await db.disableManager(org_id, managerId);
   await db.decrementManagerCount(org_id, orgAdminId);
 }
@@ -174,6 +194,12 @@ export async function enableManager(
   if (!lookup) throw new NotFoundError(`Manager '${managerId}' not found`);
   if (lookup.org_id !== org_id) throw new ForbiddenError('Not authorized to manage this manager');
 
-  await adminEnableUser(cognitoClient, lookup.email);
+  await cognitoClient.send(
+    new AdminEnableUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: lookup.email,
+    }),
+  );
+
   await db.enableManager(org_id, managerId);
 }

@@ -6,7 +6,7 @@ export interface ManagerResponse {
   phone: string;
   org_id: string;
   org_admin_id: string;
-  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED';
+  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED' | string;
   employee_count: number;
   created_at: string;
   updated_at: string;

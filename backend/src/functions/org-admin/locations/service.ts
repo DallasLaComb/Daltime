@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+export class ValidationError extends Error {}
+export class ForbiddenError extends Error {}
+export class NotFoundError extends Error {}
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; user_id: string }> {
   const lookup = await db.getCallerLookup(sub);

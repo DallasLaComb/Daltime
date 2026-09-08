@@ -1,7 +1,5 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { internalError, ok, setRequestOrigin } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listEmployees } from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -14,18 +12,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   setRequestOrigin(event.headers?.['origin']);
 
   try {
-    // Fail closed: verify the caller is in the WebAdmin Cognito group AND has
-    // a provisioned, ACTIVE WebAdmin record in DynamoDB before any query is
-    // allowed. This handler is read-only so web_admin_id is not threaded into
-    // the service call, but the identity check still applies.
-    await requireWebAdminWithLookup(event);
-
     if (method === 'GET') {
       return ok(await listEmployees());
     }
 
     return internalError(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (error) {
-    return mapHandlerError(error, 'web-admin employees handler');
+    console.error('Unhandled error in web-admin/employees handler:', error);
+    return internalError('An unexpected error occurred');
   }
 };

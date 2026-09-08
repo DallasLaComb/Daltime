@@ -3,7 +3,9 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 import type { ShiftType } from '../../shared/models/manager/shift.model.js';
 
-import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+export class ValidationError extends Error {}
+export class ForbiddenError extends Error {}
+export class NotFoundError extends Error {}
 
 const VALID_TYPES: ShiftType[] = ['morning', 'afternoon', 'night'];
 
@@ -50,7 +52,7 @@ export async function listShifts(callerSub: string, rawMonth: string | undefined
     .map((s) => stripKeys(s))
     .sort((a, b) => {
       const dc = a.date.localeCompare(b.date);
-      return dc === 0 ? a.start_time.localeCompare(b.start_time) : dc;
+      return dc !== 0 ? dc : a.start_time.localeCompare(b.start_time);
     });
 }
 
@@ -83,7 +85,7 @@ export async function createShift(
   const { org_id, manager_id } = await resolveCallerOrg(callerSub);
 
   const employee = await db.getEmployee(org_id, body.employee_id);
-  if (employee?.manager_id !== manager_id) {
+  if (!employee || employee.manager_id !== manager_id) {
     throw new ForbiddenError('Employee not found in your team');
   }
 
@@ -105,7 +107,7 @@ export async function createShift(
     date: body.date,
     start_time: body.start_time,
     end_time: body.end_time,
-    type: body.type,
+    type: body.type as ShiftType,
     status: 'published' as const,
     created_at: now,
     updated_at: now,
@@ -115,17 +117,20 @@ export async function createShift(
   return stripKeys(item);
 }
 
-type ShiftUpdateBody = {
-  employee_id?: string;
-  location_id?: string;
-  date?: string;
-  start_time?: string;
-  end_time?: string;
-  type?: string;
-};
-
-function validateShiftUpdateBody(body: ShiftUpdateBody): void {
+export async function updateShift(
+  callerSub: string,
+  shiftId: string,
+  body: {
+    employee_id?: string;
+    location_id?: string;
+    date?: string;
+    start_time?: string;
+    end_time?: string;
+    type?: string;
+  },
+) {
   if (Object.keys(body).length === 0) throw new ValidationError('At least one field is required');
+
   if (body.date !== undefined) validateDate(body.date);
   if (body.start_time !== undefined) validateTime(body.start_time, 'start_time');
   if (body.end_time !== undefined) validateTime(body.end_time, 'end_time');
@@ -137,10 +142,6 @@ function validateShiftUpdateBody(body: ShiftUpdateBody): void {
     throw new ValidationError('end_time must be after start_time');
   }
   if (body.type !== undefined) validateType(body.type);
-}
-
-export async function updateShift(callerSub: string, shiftId: string, body: ShiftUpdateBody) {
-  validateShiftUpdateBody(body);
 
   const { org_id, manager_id } = await resolveCallerOrg(callerSub);
 
@@ -156,7 +157,7 @@ export async function updateShift(callerSub: string, shiftId: string, body: Shif
 
   if (body.employee_id !== undefined) {
     const employee = await db.getEmployee(org_id, body.employee_id);
-    if (employee?.manager_id !== manager_id) {
+    if (!employee || employee.manager_id !== manager_id) {
       throw new ForbiddenError('Employee not found in your team');
     }
     fields.employee_id = body.employee_id;

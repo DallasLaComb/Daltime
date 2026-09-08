@@ -51,17 +51,17 @@ describe('LoadingSpinnerComponent', () => {
   it('has dt-spinner class on the spinner element', async () => {
     await createComponent();
 
-    const spinner = query<HTMLElement>(fixture, 'output.dt-spinner');
+    const spinner = query<HTMLElement>(fixture, '[role="status"]');
     expect(spinner.classList.contains('dt-spinner')).toBe(true);
   });
 
   // ─── Accessibility & test IDs ───────────────────────────────────────────────
 
-  it('uses <output> element for the spinner (implicit role="status")', async () => {
+  it('has role="status" on the spinner element', async () => {
     await createComponent();
 
     const spinner = query<HTMLElement>(fixture, '.dt-spinner');
-    expect(spinner.tagName.toLowerCase()).toBe('output');
+    expect(spinner.getAttribute('role')).toBe('status');
   });
 
   it('has data-testid="loading-spinner" on the outer container', async () => {

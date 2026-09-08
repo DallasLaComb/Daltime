@@ -3,7 +3,7 @@ export interface OrgAdminUserResponse {
   email: string;
   name: string;
   org_id: string;
-  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED';
+  status: 'FORCE_CHANGE_PASSWORD' | 'CONFIRMED' | 'DISABLED' | string;
   created_at: string;
 }
 

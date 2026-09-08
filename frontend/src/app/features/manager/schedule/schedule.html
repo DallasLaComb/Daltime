@@ -12,16 +12,68 @@
           <p class="text-sm text-gray-500">Manage your team's shifts</p>
         </div>
         <div class="flex items-center gap-2">
-          <section
+          <div
             class="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 self-start sm:self-auto"
+            role="group"
             aria-label="Calendar view"
           >
-            <app-schedule-view-toggle
-              [viewMode]="viewMode()"
-              [showAvailability]="true"
-              (viewModeChange)="setViewMode($event)"
-            />
-          </section>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'day'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-day"
+              (click)="setViewMode('day')"
+              (keydown.enter)="setViewMode('day')"
+              (keydown.space)="setViewMode('day')"
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'week'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-week"
+              (click)="setViewMode('week')"
+              (keydown.enter)="setViewMode('week')"
+              (keydown.space)="setViewMode('week')"
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'month'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-month"
+              (click)="setViewMode('month')"
+              (keydown.enter)="setViewMode('month')"
+              (keydown.space)="setViewMode('month')"
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'availability'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-availability"
+              (click)="setViewMode('availability')"
+              (keydown.enter)="setViewMode('availability')"
+              (keydown.space)="setViewMode('availability')"
+            >
+              Availability
+            </button>
+          </div>
           <app-button
             variant="primary"
             size="sm"
@@ -33,27 +85,129 @@
         </div>
       </div>
 
-      <app-schedule-nav
-        [viewLabel]="viewLabel()"
-        (prevRequested)="prevPeriod()"
-        (nextRequested)="nextPeriod()"
-        (todayRequested)="goToToday()"
-      />
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+            data-testid="prev-period"
+            aria-label="Previous period"
+            (click)="prevPeriod()"
+            (keydown.enter)="prevPeriod()"
+            (keydown.space)="prevPeriod()"
+          >
+            &#8249;
+          </button>
+          <span
+            class="min-w-[120px] text-center text-sm font-semibold text-gray-800 sm:min-w-[180px] sm:text-base"
+          >
+            {{ viewLabel() }}
+          </span>
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+            data-testid="next-period"
+            aria-label="Next period"
+            (click)="nextPeriod()"
+            (keydown.enter)="nextPeriod()"
+            (keydown.space)="nextPeriod()"
+          >
+            &#8250;
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+            data-testid="goto-today"
+            (click)="goToToday()"
+            (keydown.enter)="goToToday()"
+            (keydown.space)="goToToday()"
+          >
+            Today
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs font-medium text-gray-600">
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-400"></span>Morning</span
+          >
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-400"></span>Afternoon</span
+          >
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-400"></span>Night</span
+          >
+        </div>
+      </div>
     </div>
 
     <!-- ── Filters ─────────────────────────────────────────────────────────── -->
-    <app-schedule-filters
-      [employees]="employees()"
-      [locations]="locations()"
-      [filterEmployee]="filterEmployee()"
-      [filterLocation]="filterLocation()"
-      [filterType]="filterType()"
-      [hasActiveFilters]="hasActiveFilters()"
-      (employeeFilterChange)="setEmployeeFilter($event)"
-      (locationFilterChange)="setLocationFilter($event)"
-      (typeFilterChange)="setTypeFilter($event)"
-      (clearFiltersRequested)="clearFilters()"
-    />
+    <div
+      class="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4"
+    >
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-employee"
+          >Employee</label
+        >
+        <select
+          id="filter-employee"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterEmployee()"
+          (change)="setEmployeeFilter($event)"
+        >
+          <option value="">All Employees</option>
+          @for (emp of employees(); track emp.employee_id) {
+            <option [value]="emp.employee_id">{{ emp.first_name }} {{ emp.last_name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-location"
+          >Location</label
+        >
+        <select
+          id="filter-location"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterLocation()"
+          (change)="setLocationFilter($event)"
+        >
+          <option value="">All Locations</option>
+          @for (loc of locations(); track loc.location_id) {
+            <option [value]="loc.location_id">{{ loc.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-type"
+          >Shift Type</label
+        >
+        <select
+          id="filter-type"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterType()"
+          (change)="setTypeFilter($event)"
+        >
+          <option value="">All Types</option>
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="night">Night</option>
+        </select>
+      </div>
+      @if (hasActiveFilters()) {
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100"
+          data-testid="clear-filters"
+          (click)="clearFilters()"
+          (keydown.enter)="clearFilters()"
+          (keydown.space)="clearFilters()"
+        >
+          Clear filters
+        </button>
+      }
+    </div>
 
     <!-- ── Schedule Actions ──────────────────────────────────────────────────── -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -175,10 +329,9 @@
                       </div>
                       <div class="space-y-0.5">
                         @for (shift of shiftsForDay(day); track shift.shift_id) {
-                          <button
-                            type="button"
+                          <div
                             [class]="
-                              'rounded px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer text-left w-full ' +
+                              'rounded px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer ' +
                               (shift.status === 'draft' ? 'border border-dashed opacity-70 ' : '') +
                               shiftStyles[shift.type]
                             "
@@ -191,6 +344,8 @@
                             "
                             data-testid="shift-chip"
                             (click)="$event.stopPropagation(); openEditModal(shift)"
+                            (keydown.enter)="$event.stopPropagation(); openEditModal(shift)"
+                            tabindex="0"
                           >
                             <span class="block font-semibold">{{
                               shortName(shift.employee_id)
@@ -199,7 +354,7 @@
                               >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }} ·
                               {{ shortLocation(shift.location_id) }}</span
                             >
-                          </button>
+                          </div>
                         }
                         @if (day !== null) {
                           @for (
@@ -212,9 +367,8 @@
                             ) ?? [];
                             track slot.shiftNeeded.shift_id
                           ) {
-                            <button
-                              type="button"
-                              class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
+                            <div
+                              class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer hover:bg-red-100"
                               [title]="
                                 'Unfilled · ' +
                                 slot.shiftNeeded.start_time +
@@ -226,6 +380,8 @@
                               "
                               data-testid="unfilled-chip"
                               (click)="$event.stopPropagation(); openFillShiftView(slot)"
+                              (keydown.enter)="$event.stopPropagation(); openFillShiftView(slot)"
+                              tabindex="0"
                             >
                               <span class="block font-semibold text-red-600">Unfilled</span>
                               <span class="block text-red-400"
@@ -233,7 +389,7 @@
                                   shortTime(slot.shiftNeeded.end_time)
                                 }}</span
                               >
-                            </button>
+                            </div>
                           }
                         }
                       </div>
@@ -281,10 +437,9 @@
               >
                 <div class="space-y-1">
                   @for (shift of shiftsForDate(date); track shift.shift_id) {
-                    <button
-                      type="button"
+                    <div
                       [class]="
-                        'rounded px-1.5 py-1 text-[11px] leading-tight cursor-pointer text-left w-full ' +
+                        'rounded px-1.5 py-1 text-[11px] leading-tight cursor-pointer ' +
                         shiftStyles[shift.type]
                       "
                       [title]="
@@ -296,21 +451,22 @@
                       "
                       data-testid="shift-chip"
                       (click)="openEditModal(shift)"
+                      (keydown.enter)="openEditModal(shift)"
+                      tabindex="0"
                     >
                       <span class="block font-semibold">{{ shortName(shift.employee_id) }}</span>
                       <span class="block opacity-70"
                         >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }}</span
                       >
                       <span class="block opacity-60">{{ shortLocation(shift.location_id) }}</span>
-                    </button>
+                    </div>
                   }
                   @for (
                     slot of unfilledByDate().get(toDateKey(date)) ?? [];
                     track slot.shiftNeeded.shift_id
                   ) {
-                    <button
-                      type="button"
-                      class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-1 text-[11px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
+                    <div
+                      class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-1 text-[11px] leading-tight cursor-pointer hover:bg-red-100"
                       [title]="
                         'Unfilled · ' +
                         slot.shiftNeeded.start_time +
@@ -322,6 +478,8 @@
                       "
                       data-testid="unfilled-chip"
                       (click)="openFillShiftView(slot)"
+                      (keydown.enter)="openFillShiftView(slot)"
+                      tabindex="0"
                     >
                       <span class="block font-semibold text-red-600">Unfilled</span>
                       <span class="block text-red-400"
@@ -329,7 +487,7 @@
                           shortTime(slot.shiftNeeded.end_time)
                         }}</span
                       >
-                    </button>
+                    </div>
                   }
                   @if (
                     shiftsForDate(date).length === 0 &&
@@ -388,15 +546,16 @@
         </div>
         <div class="divide-y divide-gray-100">
           @for (shift of currentDayShifts(); track shift.shift_id) {
-            <button
-              type="button"
+            <div
               [class]="
-                'flex cursor-pointer items-start gap-4 border-l-4 px-5 py-4 hover:bg-gray-50 text-left w-full ' +
+                'flex cursor-pointer items-start gap-4 border-l-4 px-5 py-4 hover:bg-gray-50 ' +
                 (shift.status === 'draft' ? 'opacity-75 border-dashed ' : '') +
                 shiftBorderStyles[shift.type]
               "
               data-testid="shift-card"
               (click)="openEditModal(shift)"
+              (keydown.enter)="openEditModal(shift)"
+              tabindex="0"
             >
               <div class="w-24 shrink-0 text-center">
                 <p class="text-sm font-semibold text-gray-800">{{ shift.start_time }}</p>
@@ -422,17 +581,17 @@
                   >{{ shift.type }}</span
                 >
               </div>
-            </button>
+            </div>
           }
           @for (
             slot of unfilledByDate().get(toDateKey(currentDate())) ?? [];
             track slot.shiftNeeded.shift_id
           ) {
-            <button
-              type="button"
-              class="flex cursor-pointer items-start gap-4 border-l-4 border-dashed border-l-red-400 bg-red-50 px-5 py-4 hover:bg-red-100 text-left w-full"
+            <div
+              class="flex cursor-pointer items-start gap-4 border-l-4 border-dashed border-l-red-400 bg-red-50 px-5 py-4 hover:bg-red-100"
               data-testid="unfilled-card"
               (click)="openFillShiftView(slot)"
+              (keydown.enter)="openFillShiftView(slot)"
               tabindex="0"
             >
               <div class="w-24 shrink-0 text-center">
@@ -453,7 +612,7 @@
                 class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-600"
                 >Unfilled</span
               >
-            </button>
+            </div>
           }
           @if (
             currentDayShifts().length === 0 &&

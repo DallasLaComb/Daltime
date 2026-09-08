@@ -50,14 +50,3 @@ export function notFound(message = 'Not found'): APIGatewayProxyResultV2 {
 export function internalError(message = 'Internal server error'): APIGatewayProxyResultV2 {
   return { statusCode: 500, headers: corsHeaders(), body: JSON.stringify({ error: message }) };
 }
-
-type ParseBodyResult<T> = { ok: true; data: T } | { ok: false; response: APIGatewayProxyResultV2 };
-
-export function parseBody<T>(rawBody: string | undefined): ParseBodyResult<T> {
-  if (!rawBody) return { ok: false, response: badRequest('Request body is required') };
-  try {
-    return { ok: true, data: JSON.parse(rawBody) as T };
-  } catch {
-    return { ok: false, response: badRequest('Invalid JSON body') };
-  }
-}

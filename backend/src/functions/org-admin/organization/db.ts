@@ -1,15 +1,17 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import {
-  docClient,
-  TABLE_NAME,
-  getMetadataRecord,
-  updateOrganizationRecord,
-} from '../../shared/dynamo.js';
+import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, TABLE_NAME } from '../../shared/dynamo.js';
 
 export async function getCallerLookup(
   userId: string,
 ): Promise<{ org_id: string; user_id: string } | null> {
-  return getMetadataRecord(userId);
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'METADATA' },
+    }),
+  );
+  if (!result.Item) return null;
+  return result.Item as { org_id: string; user_id: string };
 }
 
 export async function getOrganization(orgId: string) {
@@ -26,5 +28,19 @@ export async function updateOrganization(
   orgId: string,
   fields: { name: string; address: string; updated_at: string },
 ) {
-  return updateOrganizationRecord(orgId, fields);
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `ORG#${orgId}`, SK: 'METADATA' },
+      UpdateExpression: 'SET #name = :name, address = :address, updated_at = :updated_at',
+      ExpressionAttributeNames: { '#name': 'name' },
+      ExpressionAttributeValues: {
+        ':name': fields.name,
+        ':address': fields.address,
+        ':updated_at': fields.updated_at,
+      },
+      ReturnValues: 'ALL_NEW',
+    }),
+  );
+  return result.Attributes as Record<string, unknown>;
 }

@@ -12,16 +12,54 @@
           <p class="text-sm text-gray-500">Org-wide shift overview</p>
         </div>
         <div class="flex flex-col gap-2 sm:items-end">
-          <fieldset
+          <div
             class="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 self-start sm:self-auto"
+            role="group"
+            aria-label="Calendar view"
           >
-            <legend class="sr-only">Calendar view</legend>
-            <app-schedule-view-toggle
-              [viewMode]="viewMode()"
-              [showAvailability]="false"
-              (viewModeChange)="setViewMode($any($event))"
-            />
-          </fieldset>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'day'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-day"
+              (click)="setViewMode('day')"
+              (keydown.enter)="setViewMode('day')"
+              (keydown.space)="setViewMode('day')"
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'week'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-week"
+              (click)="setViewMode('week')"
+              (keydown.enter)="setViewMode('week')"
+              (keydown.space)="setViewMode('week')"
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              [class]="
+                viewMode() === 'month'
+                  ? 'rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-all'
+                  : 'rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition-all hover:text-gray-700'
+              "
+              data-testid="view-month"
+              (click)="setViewMode('month')"
+              (keydown.enter)="setViewMode('month')"
+              (keydown.space)="setViewMode('month')"
+            >
+              Month
+            </button>
+          </div>
           <div class="flex items-center gap-2 self-start sm:self-auto">
             <app-button
               variant="secondary"
@@ -41,27 +79,128 @@
         </div>
       </div>
 
-      <app-schedule-nav
-        [viewLabel]="viewLabel()"
-        (prevRequested)="prevPeriod()"
-        (nextRequested)="nextPeriod()"
-        (todayRequested)="goToToday()"
-      />
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+            data-testid="prev-period"
+            aria-label="Previous period"
+            (click)="prevPeriod()"
+            (keydown.enter)="prevPeriod()"
+            (keydown.space)="prevPeriod()"
+          >
+            &#8249;
+          </button>
+          <span
+            class="min-w-[120px] text-center text-sm font-semibold text-gray-800 sm:min-w-[180px] sm:text-base"
+            >{{ viewLabel() }}</span
+          >
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+            data-testid="next-period"
+            aria-label="Next period"
+            (click)="nextPeriod()"
+            (keydown.enter)="nextPeriod()"
+            (keydown.space)="nextPeriod()"
+          >
+            &#8250;
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+            data-testid="goto-today"
+            (click)="goToToday()"
+            (keydown.enter)="goToToday()"
+            (keydown.space)="goToToday()"
+          >
+            Today
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs font-medium text-gray-600">
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-400"></span>Morning</span
+          >
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-400"></span>Afternoon</span
+          >
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-2.5 w-2.5 rounded-full bg-violet-400"></span>Night</span
+          >
+        </div>
+      </div>
     </div>
 
     <!-- ── Filters ─────────────────────────────────────────────────────────── -->
-    <app-schedule-filters
-      [employees]="employees()"
-      [locations]="locations()"
-      [filterEmployee]="filterEmployee()"
-      [filterLocation]="filterLocation()"
-      [filterType]="filterType()"
-      [hasActiveFilters]="hasActiveFilters()"
-      (employeeFilterChange)="setEmployeeFilter($event)"
-      (locationFilterChange)="setLocationFilter($event)"
-      (typeFilterChange)="setTypeFilter($event)"
-      (clearFiltersRequested)="clearFilters()"
-    />
+    <div
+      class="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4"
+    >
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-employee"
+          >Employee</label
+        >
+        <select
+          id="filter-employee"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterEmployee()"
+          (change)="setEmployeeFilter($event)"
+        >
+          <option value="">All Employees</option>
+          @for (emp of employees(); track emp.employee_id) {
+            <option [value]="emp.employee_id">{{ emp.first_name }} {{ emp.last_name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-location"
+          >Location</label
+        >
+        <select
+          id="filter-location"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterLocation()"
+          (change)="setLocationFilter($event)"
+        >
+          <option value="">All Locations</option>
+          @for (loc of locations(); track loc.location_id) {
+            <option [value]="loc.location_id">{{ loc.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-type"
+          >Shift Type</label
+        >
+        <select
+          id="filter-type"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterType()"
+          (change)="setTypeFilter($event)"
+        >
+          <option value="">All Types</option>
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="night">Night</option>
+        </select>
+      </div>
+      @if (hasActiveFilters()) {
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100"
+          data-testid="clear-filters"
+          (click)="clearFilters()"
+          (keydown.enter)="clearFilters()"
+          (keydown.space)="clearFilters()"
+        >
+          Clear filters
+        </button>
+      }
+    </div>
 
     <!-- ═══ MONTHLY VIEW ══════════════════════════════════════════════════════ -->
     @if (viewMode() === 'month') {

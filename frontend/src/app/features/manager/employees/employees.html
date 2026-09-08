@@ -12,14 +12,52 @@
   <app-card-list [data]="employees()" [trackBy]="trackById" [cardTemplate]="employeeCard" />
 
   <ng-template #employeeCard let-employee>
-    <app-employee-card-header [employee]="employee" />
-    <app-employee-actions
-      [status]="employee.status"
-      layout="card"
-      (editRequested)="openEditModal(employee)"
-      (disableRequested)="openDisableModal(employee)"
-      (enableRequested)="openEnableModal(employee)"
-    />
+    <div class="flex justify-between items-start mb-1">
+      <h6 class="text-base font-semibold text-gray-900 mb-0" data-testid="employee-name">
+        {{ employee.first_name }} {{ employee.last_name }}
+      </h6>
+      <app-status-badge
+        [status]="employee.status"
+        [label]="statusLabel(employee.status)"
+        [colorMap]="statusColorMap"
+      />
+    </div>
+    <p class="text-sm text-gray-500 mb-1" data-testid="employee-email">{{ employee.email }}</p>
+    @if (employee.phone) {
+      <p class="text-sm text-gray-500 mb-1" data-testid="employee-phone">{{ employee.phone }}</p>
+    }
+    <div class="flex justify-between items-center mb-3">
+      <small class="text-gray-400">{{ employee.created_at | date: 'mediumDate' }}</small>
+    </div>
+    @if (employee.status !== 'DISABLED') {
+      <div class="flex gap-2">
+        <app-button
+          class="flex-1"
+          variant="primary-outline"
+          size="sm"
+          testId="edit-btn"
+          (clicked)="openEditModal(employee)"
+          >Edit</app-button
+        >
+        <app-button
+          class="flex-1"
+          variant="danger-outline"
+          size="sm"
+          testId="disable-btn"
+          (clicked)="openDisableModal(employee)"
+          >Disable</app-button
+        >
+      </div>
+    } @else {
+      <app-button
+        [fullWidth]="true"
+        variant="primary-outline"
+        size="sm"
+        testId="enable-btn"
+        (clicked)="openEnableModal(employee)"
+        >Enable</app-button
+      >
+    }
   </ng-template>
 
   <app-data-table [columns]="columns" [data]="employees()" [trackBy]="trackById">
@@ -39,46 +77,370 @@
         </td>
         <td class="px-4 py-3 text-gray-500">{{ employee.created_at | date: 'mediumDate' }}</td>
         <td class="px-4 py-3 text-right">
-          <app-employee-actions
-            [status]="employee.status"
-            layout="table"
-            (editRequested)="openEditModal(employee)"
-            (disableRequested)="openDisableModal(employee)"
-            (enableRequested)="openEnableModal(employee)"
-          />
+          @if (employee.status !== 'DISABLED') {
+            <app-button
+              class="mr-1"
+              variant="primary-outline"
+              size="sm"
+              testId="edit-btn"
+              (clicked)="openEditModal(employee)"
+              >Edit</app-button
+            >
+            <app-button
+              variant="danger-outline"
+              size="sm"
+              testId="disable-btn"
+              (clicked)="openDisableModal(employee)"
+              >Disable</app-button
+            >
+          } @else {
+            <app-button
+              variant="primary-outline"
+              size="sm"
+              testId="enable-btn"
+              (clicked)="openEnableModal(employee)"
+              >Enable</app-button
+            >
+          }
         </td>
       </tr>
     }
   </app-data-table>
 
   <ng-container slot="modals">
-    <app-register-employee-modal
-      [open]="showRegisterModal()"
-      [saving]="saving()"
-      [error]="modalError()"
-      (cancelled)="closeRegisterModal()"
-      (registered)="handleRegister($event)"
-    />
+    <!-- Register Modal -->
+    @if (showRegisterModal()) {
+      <div class="fixed inset-0 bg-black/50 z-40"></div>
+      <div
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+        tabindex="-1"
+        data-testid="register-modal"
+        (click)="closeRegisterModal()"
+        (keydown)="closeRegisterModal()"
+      >
+        <div
+          class="w-full sm:max-w-lg"
+          [tabindex]="0"
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        >
+          <div class="bg-white shadow-xl sm:rounded-xl max-h-dvh sm:max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h5 class="text-lg font-semibold text-gray-900">Register Employee</h5>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition-colors text-2xl leading-none"
+                data-testid="close-register-modal-btn"
+                (click)="closeRegisterModal()"
+              >
+                &times;
+              </button>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+              @if (modalError()) {
+                <div
+                  class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+                  data-testid="modal-error"
+                >
+                  {{ modalError() }}
+                </div>
+              }
+              <div>
+                <label for="empFirstName" class="block text-sm font-medium text-gray-700 mb-1"
+                  >First Name</label
+                >
+                <input
+                  type="text"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.input-error]="formSubmitted() && !formFirstName().trim()"
+                  id="empFirstName"
+                  data-testid="first-name-input"
+                  [value]="formFirstName()"
+                  (input)="formFirstName.set($any($event.target).value)"
+                  placeholder="First name"
+                  autocomplete="given-name"
+                />
+                @if (formSubmitted() && !formFirstName().trim()) {
+                  <p class="input-feedback" data-testid="first-name-error">
+                    First name is required
+                  </p>
+                }
+              </div>
+              <div>
+                <label for="empLastName" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Last Name</label
+                >
+                <input
+                  type="text"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.input-error]="formSubmitted() && !formLastName().trim()"
+                  id="empLastName"
+                  data-testid="last-name-input"
+                  [value]="formLastName()"
+                  (input)="formLastName.set($any($event.target).value)"
+                  placeholder="Last name"
+                  autocomplete="family-name"
+                />
+                @if (formSubmitted() && !formLastName().trim()) {
+                  <p class="input-feedback" data-testid="last-name-error">Last name is required</p>
+                }
+              </div>
+              <div>
+                <label for="empEmail" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Email</label
+                >
+                <input
+                  type="email"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.input-error]="formSubmitted() && !formEmail().trim()"
+                  id="empEmail"
+                  data-testid="email-input"
+                  [value]="formEmail()"
+                  (input)="formEmail.set($any($event.target).value)"
+                  placeholder="employee@example.com"
+                  autocomplete="email"
+                />
+                @if (formSubmitted() && !formEmail().trim()) {
+                  <p class="input-feedback" data-testid="email-error">Email is required</p>
+                }
+              </div>
+              <div>
+                <label for="empPhone" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Phone <span class="text-gray-400">(optional)</span></label
+                >
+                <input
+                  type="tel"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  id="empPhone"
+                  data-testid="phone-input"
+                  [value]="formPhone()"
+                  (input)="formPhone.set($any($event.target).value)"
+                  placeholder="555-123-4567"
+                  autocomplete="tel"
+                />
+              </div>
+              <div>
+                <label for="empPassword" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Temporary Password</label
+                >
+                <div class="flex">
+                  <input
+                    [type]="showPassword() ? 'text' : 'password'"
+                    class="block flex-1 rounded-l-lg border border-r-0 border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                    [class.input-error]="formSubmitted() && !formPassword().trim()"
+                    id="empPassword"
+                    data-testid="password-input"
+                    [value]="formPassword()"
+                    (input)="formPassword.set($any($event.target).value)"
+                    placeholder="Temporary password"
+                    autocomplete="new-password"
+                  />
+                  <button
+                    class="btn-dt-secondary rounded-l-none rounded-r-lg border border-dt-secondary px-3 text-sm"
+                    type="button"
+                    data-testid="toggle-password-btn"
+                    (click)="togglePassword()"
+                  >
+                    {{ showPassword() ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                @if (formSubmitted() && !formPassword().trim()) {
+                  <p class="input-feedback" data-testid="password-error">
+                    Temporary password is required
+                  </p>
+                }
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-gray-200">
+              <app-button
+                variant="secondary"
+                [fullWidth]="true"
+                testId="cancel-register-btn"
+                (clicked)="closeRegisterModal()"
+                >Cancel</app-button
+              >
+              <app-button
+                variant="primary"
+                [fullWidth]="true"
+                [loading]="saving()"
+                testId="save-register-btn"
+                (clicked)="register()"
+                >Register</app-button
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    }
 
-    <app-edit-employee-modal
-      [open]="showEditModal()"
-      [saving]="saving()"
-      [error]="editError()"
-      [initial]="editingEmployee()"
-      (cancelled)="closeEditModal()"
-      (saved)="handleSaveEdit($event)"
-    />
+    <!-- Edit Modal -->
+    @if (showEditModal()) {
+      <div class="fixed inset-0 bg-black/50 z-40"></div>
+      <div
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+        tabindex="-1"
+        data-testid="edit-modal"
+        (click)="closeEditModal()"
+        (keydown)="closeEditModal()"
+      >
+        <div
+          class="w-full sm:max-w-lg"
+          [tabindex]="0"
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        >
+          <div class="bg-white shadow-xl sm:rounded-xl max-h-dvh sm:max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h5 class="text-lg font-semibold text-gray-900">Edit Employee</h5>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition-colors text-2xl leading-none"
+                data-testid="close-edit-modal-btn"
+                (click)="closeEditModal()"
+              >
+                &times;
+              </button>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+              @if (editError()) {
+                <div
+                  class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+                  data-testid="edit-modal-error"
+                >
+                  {{ editError() }}
+                </div>
+              }
+              <div>
+                <p class="block text-sm font-medium text-gray-700 mb-1">Email</p>
+                <input
+                  type="email"
+                  class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-base text-gray-500"
+                  aria-label="Email"
+                  data-testid="edit-email-display"
+                  [value]="editingEmployee()?.email"
+                  readonly
+                  disabled
+                />
+              </div>
+              <div>
+                <label for="editEmpFirstName" class="block text-sm font-medium text-gray-700 mb-1"
+                  >First Name</label
+                >
+                <input
+                  type="text"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.input-error]="editSubmitted() && !editFirstName().trim()"
+                  id="editEmpFirstName"
+                  data-testid="edit-first-name-input"
+                  [value]="editFirstName()"
+                  (input)="editFirstName.set($any($event.target).value)"
+                  autocomplete="given-name"
+                />
+                @if (editSubmitted() && !editFirstName().trim()) {
+                  <p class="input-feedback" data-testid="edit-first-name-error">
+                    First name is required
+                  </p>
+                }
+              </div>
+              <div>
+                <label for="editEmpLastName" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Last Name</label
+                >
+                <input
+                  type="text"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.input-error]="editSubmitted() && !editLastName().trim()"
+                  id="editEmpLastName"
+                  data-testid="edit-last-name-input"
+                  [value]="editLastName()"
+                  (input)="editLastName.set($any($event.target).value)"
+                  autocomplete="family-name"
+                />
+                @if (editSubmitted() && !editLastName().trim()) {
+                  <p class="input-feedback" data-testid="edit-last-name-error">
+                    Last name is required
+                  </p>
+                }
+              </div>
+              <div>
+                <label for="editEmpPhone" class="block text-sm font-medium text-gray-700 mb-1"
+                  >Phone <span class="text-gray-400">(optional)</span></label
+                >
+                <input
+                  type="tel"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  id="editEmpPhone"
+                  data-testid="edit-phone-input"
+                  [value]="editPhone()"
+                  (input)="editPhone.set($any($event.target).value)"
+                  autocomplete="tel"
+                />
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-gray-200">
+              <app-button
+                variant="secondary"
+                [fullWidth]="true"
+                testId="cancel-edit-btn"
+                (clicked)="closeEditModal()"
+                >Cancel</app-button
+              >
+              <app-button
+                variant="primary"
+                [fullWidth]="true"
+                [loading]="saving()"
+                testId="save-edit-btn"
+                (clicked)="saveEdit()"
+                >Save</app-button
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    }
 
-    <app-employee-status-modals
-      [showDisableModal]="showDisableModal()"
-      [showEnableModal]="showEnableModal()"
-      [disablingEmployee]="disablingEntity()"
-      [enablingEmployee]="enablingEntity()"
+    <!-- Disable Confirmation Modal -->
+    <app-confirmation-modal
+      [open]="showDisableModal()"
+      title="Disable Employee"
+      confirmLabel="Disable"
+      confirmVariant="danger"
       [saving]="saving()"
-      (disableConfirmed)="confirmDisable()"
-      (disableCancelled)="closeDisableModal()"
-      (enableConfirmed)="confirmEnable()"
-      (enableCancelled)="closeEnableModal()"
-    />
+      (confirmed)="confirmDisable()"
+      (cancelled)="closeDisableModal()"
+    >
+      <p>
+        Are you sure you want to disable
+        <strong data-testid="disable-employee-name"
+          >{{ disablingEmployee()?.first_name }} {{ disablingEmployee()?.last_name }}</strong
+        >
+        (<span data-testid="disable-employee-email">{{ disablingEmployee()?.email }}</span
+        >)?
+      </p>
+      <p class="text-gray-500 mb-0">
+        This will prevent them from signing in. Their data is preserved.
+      </p>
+    </app-confirmation-modal>
+
+    <!-- Enable Confirmation Modal -->
+    <app-confirmation-modal
+      [open]="showEnableModal()"
+      title="Enable Employee"
+      confirmLabel="Enable"
+      confirmVariant="primary"
+      [saving]="saving()"
+      (confirmed)="confirmEnable()"
+      (cancelled)="closeEnableModal()"
+    >
+      <p>
+        Are you sure you want to re-enable
+        <strong data-testid="enable-employee-name"
+          >{{ enablingEmployee()?.first_name }} {{ enablingEmployee()?.last_name }}</strong
+        >
+        (<span data-testid="enable-employee-email">{{ enablingEmployee()?.email }}</span
+        >)?
+      </p>
+      <p class="text-gray-500 mb-0">This will restore their ability to sign in.</p>
+    </app-confirmation-modal>
   </ng-container>
 </app-crud-page>

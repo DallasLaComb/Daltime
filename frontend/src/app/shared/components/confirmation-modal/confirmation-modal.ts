@@ -7,8 +7,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
-import { ButtonComponent } from '../button/button';
-import type { ButtonVariant } from '../button/button';
+import { ButtonComponent, ButtonVariant } from '@common-daltime';
 
 @Component({
   selector: 'app-confirmation-modal',
@@ -77,16 +76,18 @@ export class ConfirmationModalComponent {
     if (focusableElements.length === 0) return;
 
     const firstElement = focusableElements[0];
-    const lastElement = focusableElements.at(-1)!;
+    const lastElement = focusableElements[focusableElements.length - 1];
 
     if (event.shiftKey) {
       if (document.activeElement === firstElement || document.activeElement === container) {
         event.preventDefault();
         lastElement.focus();
       }
-    } else if (document.activeElement === lastElement) {
-      event.preventDefault();
-      firstElement.focus();
+    } else {
+      if (document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     }
   }
 }

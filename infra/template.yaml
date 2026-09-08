@@ -469,8 +469,6 @@ Resources:
     Properties:
       TableName: !Sub 'daltime-${AWS::StackName}'
       BillingMode: PAY_PER_REQUEST
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -1132,6 +1130,12 @@ Resources:
             Path: /web-admin/impersonate/{userId}/context
             Method: GET
             ApiId: !Ref DalTimeHttpApi
+        ProxyManagerShiftsNeeded:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/manager/shifts-needed
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
         OptionsImpersonateRoot:
           Type: HttpApi
           Properties:
@@ -1164,45 +1168,134 @@ Resources:
             ApiId: !Ref DalTimeHttpApi
             Auth:
               Authorizer: NONE
-        # Generic catch-all: every "{role}/..." route under impersonate is
-        # resolved in-process by route-registry.ts, so this single set of
-        # method-specific events (HttpApi requires one event per method) is
-        # the *only* registration a new real feature route ever needs on the
-        # impersonate side — no per-route entries above this point.
-        ProxyAllGet:
+        ProxyAll:
           Type: HttpApi
           Properties:
             Path: /web-admin/impersonate/{userId}/{proxy+}
             Method: GET
             ApiId: !Ref DalTimeHttpApi
-        ProxyAllPost:
+        OptionsImpersonateProxy:
           Type: HttpApi
           Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: POST
+            Path: /web-admin/impersonate/{userId}/manager/shifts-needed
+            Method: OPTIONS
             ApiId: !Ref DalTimeHttpApi
-        ProxyAllPut:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: PUT
-            ApiId: !Ref DalTimeHttpApi
-        ProxyAllPatch:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        ProxyAllDelete:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: DELETE
-            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
         OptionsProxyAll:
           Type: HttpApi
           Properties:
             Path: /web-admin/impersonate/{userId}/{proxy+}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        AssignManagerLocation:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        RemoveManagerLocation:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations/{locationId}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
+        OptionsProxyManagerLocations:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsProxyManagerLocationById:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/managers/{managerId}/locations/{locationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        AssignEmployeeLocation:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        RemoveEmployeeLocation:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations/{locationId}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
+        OptionsProxyEmployeeLocations:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsProxyEmployeeLocationById:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/org-admin/employees/{employeeId}/locations/{locationId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        GetEmployeeProfile:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/profile
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        OptionsProxyEmployeeProfile:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/profile
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        GetEmployeeAvailability:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        UpdateEmployeeAvailabilityProxy:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability
+            Method: PUT
+            ApiId: !Ref DalTimeHttpApi
+        OptionsProxyEmployeeAvailability:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        GetEmployeeAvailabilityOverridesProxy:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        UpdateEmployeeAvailabilityOverridesProxy:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
+            Method: PUT
+            ApiId: !Ref DalTimeHttpApi
+        OptionsProxyEmployeeAvailabilityOverrides:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/{userId}/employee/availability/overrides
             Method: OPTIONS
             ApiId: !Ref DalTimeHttpApi
             Auth:
@@ -1652,174 +1745,6 @@ Resources:
       BuildProperties:
         EntryPoints:
           - src/functions/employee/shifts/handler.ts
-        Format: esm
-        OutExtension:
-          - .js=.mjs
-        Target: 'es2022'
-        Sourcemap: true
-        External:
-          - '@aws-sdk/*'
-
-  NotificationsFunctionLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
-      RetentionInDays: 1
-
-  NotificationsFunction:
-    Type: AWS::Serverless::Function
-    DependsOn: NotificationsFunctionLogGroup
-    Properties:
-      FunctionName: !Sub '${AWS::StackName}-NotificationsFunction'
-      LoggingConfig:
-        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
-      CodeUri: ../backend
-      Handler: src/functions/shared/notifications/handler.handler
-      Events:
-        ListWebAdminNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/notifications
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        MarkAllWebAdminNotificationsRead:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/notifications
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        MarkOneWebAdminNotificationRead:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/notifications/{notificationId}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        OptionsWebAdminNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/notifications
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsWebAdminNotificationById:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/notifications/{notificationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        ListOrgAdminNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /org-admin/notifications
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        MarkAllOrgAdminNotificationsRead:
-          Type: HttpApi
-          Properties:
-            Path: /org-admin/notifications
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        MarkOneOrgAdminNotificationRead:
-          Type: HttpApi
-          Properties:
-            Path: /org-admin/notifications/{notificationId}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        OptionsOrgAdminNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /org-admin/notifications
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsOrgAdminNotificationById:
-          Type: HttpApi
-          Properties:
-            Path: /org-admin/notifications/{notificationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        ListManagerNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /manager/notifications
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        MarkAllManagerNotificationsRead:
-          Type: HttpApi
-          Properties:
-            Path: /manager/notifications
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        MarkOneManagerNotificationRead:
-          Type: HttpApi
-          Properties:
-            Path: /manager/notifications/{notificationId}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        OptionsManagerNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /manager/notifications
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsManagerNotificationById:
-          Type: HttpApi
-          Properties:
-            Path: /manager/notifications/{notificationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        ListEmployeeNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /employee/notifications
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        MarkAllEmployeeNotificationsRead:
-          Type: HttpApi
-          Properties:
-            Path: /employee/notifications
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        MarkOneEmployeeNotificationRead:
-          Type: HttpApi
-          Properties:
-            Path: /employee/notifications/{notificationId}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        OptionsEmployeeNotifications:
-          Type: HttpApi
-          Properties:
-            Path: /employee/notifications
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-        OptionsEmployeeNotificationById:
-          Type: HttpApi
-          Properties:
-            Path: /employee/notifications/{notificationId}
-            Method: OPTIONS
-            ApiId: !Ref DalTimeHttpApi
-            Auth:
-              Authorizer: NONE
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DalTimeTable
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-          - src/functions/shared/notifications/handler.ts
         Format: esm
         OutExtension:
           - .js=.mjs

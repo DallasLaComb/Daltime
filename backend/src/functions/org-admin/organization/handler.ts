@@ -1,8 +1,20 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { getCallerSub } from '../../shared/auth.js';
-import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { getOrganization, updateOrganization } from './service.js';
+import {
+  ok,
+  badRequest,
+  notFound,
+  forbidden,
+  internalError,
+  setRequestOrigin,
+} from '../../shared/response.js';
+import {
+  ValidationError,
+  ForbiddenError,
+  NotFoundError,
+  getOrganization,
+  updateOrganization,
+} from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -19,13 +31,22 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<{ name?: string; address?: string }>(event.body);
-      if (!parsed.ok) return parsed.response;
-      return ok(await updateOrganization(callerSub, parsed.data));
+      if (!event.body) return badRequest('Request body is required');
+      let body: { name?: string; address?: string };
+      try {
+        body = JSON.parse(event.body) as { name?: string; address?: string };
+      } catch {
+        return badRequest('Invalid JSON body');
+      }
+      return ok(await updateOrganization(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'org-admin organization handler');
+    if (err instanceof ValidationError) return badRequest((err as Error).message);
+    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
+    if (err instanceof NotFoundError) return notFound((err as Error).message);
+    console.error('Unhandled error in org-admin organization handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

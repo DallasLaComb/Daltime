@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import type { Shift } from '../../../core/models/shift.model';
+import type { Shift, ShiftType } from '../../../core/models/shift.model';
 import { EmployeeShiftsService } from './shifts.service';
 import {
   ButtonComponent,
@@ -14,13 +14,39 @@ import {
   ErrorAlertComponent,
   EmptyStateComponent,
 } from '@common-daltime';
-import {
-  SHIFT_BORDER_STYLES,
-  SHIFT_BADGE_STYLES,
-  toMonthKey,
-  formatMonthLabel,
-  formatLongDateLabel,
-} from '../../../core/utils/schedule.utils';
+
+const SHIFT_BORDER_STYLES: Record<ShiftType, string> = {
+  morning: 'border-l-sky-400',
+  afternoon: 'border-l-amber-400',
+  night: 'border-l-violet-400',
+};
+
+const SHIFT_BADGE_STYLES: Record<ShiftType, string> = {
+  morning: 'bg-sky-100 text-sky-700',
+  afternoon: 'bg-amber-100 text-amber-700',
+  night: 'bg-violet-100 text-violet-700',
+};
+
+function toMonthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-');
+  return new Date(Number(year), Number(m) - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatDateLabel(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
 interface ShiftGroup {
   date: string;
@@ -57,8 +83,8 @@ export class EmployeeScheduleComponent implements OnInit {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, dayShifts]) => ({
         date,
-        dateLabel: formatLongDateLabel(date),
-        shifts: [...dayShifts].sort((a, b) => a.start_time.localeCompare(b.start_time)),
+        dateLabel: formatDateLabel(date),
+        shifts: dayShifts.sort((a, b) => a.start_time.localeCompare(b.start_time)),
       }));
   });
 

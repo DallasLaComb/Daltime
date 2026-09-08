@@ -1,9 +1,19 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { getCallerSub } from '../../shared/auth.js';
-import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
+import {
+  ok,
+  badRequest,
+  forbidden,
+  internalError,
+  setRequestOrigin,
+} from '../../shared/response.js';
 import type { UpsertOverridesBody } from '../../shared/models/employee/availability.model.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { getAvailabilityOverrides, upsertAvailabilityOverrides } from './service.js';
+import {
+  ValidationError,
+  ForbiddenError,
+  getAvailabilityOverrides,
+  upsertAvailabilityOverrides,
+} from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -21,13 +31,21 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<UpsertOverridesBody>(event.body);
-      if (!parsed.ok) return parsed.response;
-      return ok(await upsertAvailabilityOverrides(callerSub, parsed.data));
+      if (!event.body) return badRequest('Request body is required');
+      let body: UpsertOverridesBody;
+      try {
+        body = JSON.parse(event.body) as UpsertOverridesBody;
+      } catch {
+        return badRequest('Invalid JSON body');
+      }
+      return ok(await upsertAvailabilityOverrides(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'employee availability-overrides handler');
+    if (err instanceof ValidationError) return badRequest((err as Error).message);
+    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
+    console.error('Unhandled error in employee availability-overrides handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

@@ -1,8 +1,13 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { getCallerSub } from '../../shared/auth.js';
-import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
-import { mapHandlerError } from '../../shared/errors.js';
-import { listMyShifts } from './service.js';
+import {
+  ok,
+  badRequest,
+  forbidden,
+  internalError,
+  setRequestOrigin,
+} from '../../shared/response.js';
+import { ForbiddenError, listMyShifts } from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -21,6 +26,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
   } catch (err) {
-    return mapHandlerError(err, 'employee shifts handler');
+    if (err instanceof ForbiddenError) return forbidden((err as Error).message);
+    console.error('Unhandled error in employee shifts handler:', err);
+    return internalError('An unexpected error occurred');
   }
 };

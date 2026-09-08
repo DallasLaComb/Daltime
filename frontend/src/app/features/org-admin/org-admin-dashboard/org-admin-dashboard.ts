@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
-import { USER_STATUS_COLOR_MAP, getUserStatusLabel } from '../../../core/utils/user-status';
 import { AuthService } from '../../../core/auth/auth';
 import { ImpersonationService } from '../../../core/services/impersonation.service';
 import { OrganizationService } from '../../../services/organization.service';
@@ -31,7 +30,11 @@ export class OrgAdminDashboard {
   readonly hierarchyLoading = signal(true);
   readonly hierarchyError = signal<string | null>(null);
 
-  readonly statusColorMap = USER_STATUS_COLOR_MAP;
+  readonly statusColorMap: Record<string, string> = {
+    CONFIRMED: 'badge-dt-success',
+    DISABLED: 'badge-dt-secondary',
+    FORCE_CHANGE_PASSWORD: 'badge-dt-warning',
+  };
 
   readonly hierarchy = computed(() => {
     const employeesByManager = new Map<string, EmployeeResponse[]>();
@@ -49,7 +52,11 @@ export class OrgAdminDashboard {
     };
   });
 
-  readonly statusLabel = getUserStatusLabel;
+  statusLabel(status: string): string {
+    if (status === 'CONFIRMED') return 'Active';
+    if (status === 'DISABLED') return 'Disabled';
+    return 'Pending';
+  }
 
   constructor() {
     const authService = inject(AuthService);

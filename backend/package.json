@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --project unit",
-    "test:ci": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
     "build": "PATH=\"$PATH:$(pwd)/node_modules/.bin\" sam build --template-file ../infra/template.yaml",
     "start": "PATH=\"$PATH:$(pwd)/node_modules/.bin\" sam build --template-file ../infra/template.yaml && sam local start-api --template-file .aws-sam/build/template.yaml --port 3000 --profile daltime-dev --env-vars env.local.json",

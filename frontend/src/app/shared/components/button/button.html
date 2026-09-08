@@ -6,7 +6,7 @@
   (click)="clicked.emit()"
 >
   @if (loading()) {
-    <output class="dt-spinner-sm"></output>
+    <span class="dt-spinner-sm" role="status"></span>
   }
   <ng-content />
 </button>
