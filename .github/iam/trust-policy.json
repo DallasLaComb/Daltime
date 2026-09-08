@@ -12,7 +12,7 @@
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:DallasLaComb/daltime:environment:{{ENVIRONMENT}}"
+          "token.actions.githubusercontent.com:sub": "repo:DallasLaComb@88401844/daltime@1360788820:environment:{{ENVIRONMENT}}"
         }
       }
     }
